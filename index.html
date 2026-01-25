@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>West Loop Chicago Construction Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>West Loop Chicago</h1>
+            <p class="subtitle">Construction & Development Tracker</p>
+        </div>
+    </header>
+
+    <main>
+        <section class="stats-bar">
+            <div class="stat-item">
+                <span class="stat-number" id="total-projects">0</span>
+                <span class="stat-label">Total Projects</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number" id="under-construction">0</span>
+                <span class="stat-label">Under Construction</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number" id="proposed">0</span>
+                <span class="stat-label">Proposed</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number" id="completed-2024">0</span>
+                <span class="stat-label">Completed (2024+)</span>
+            </div>
+        </section>
+
+        <section class="filters">
+            <div class="filter-group">
+                <label for="status-filter">Status:</label>
+                <select id="status-filter">
+                    <option value="all">All Statuses</option>
+                    <option value="under-construction">Under Construction</option>
+                    <option value="proposed">Proposed</option>
+                    <option value="approved">Approved</option>
+                    <option value="completed">Completed</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="type-filter">Type:</label>
+                <select id="type-filter">
+                    <option value="all">All Types</option>
+                    <option value="residential">Residential</option>
+                    <option value="commercial">Commercial</option>
+                    <option value="mixed-use">Mixed-Use</option>
+                    <option value="hotel">Hotel</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="search-input">Search:</label>
+                <input type="text" id="search-input" placeholder="Search projects...">
+            </div>
+        </section>
+
+        <section class="projects-grid" id="projects-container">
+            <!-- Projects will be dynamically inserted here -->
+        </section>
+    </main>
+
+    <div class="modal" id="project-modal">
+        <div class="modal-content">
+            <span class="close-btn" id="close-modal">&times;</span>
+            <div id="modal-body">
+                <!-- Modal content will be dynamically inserted -->
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>West Loop Construction Tracker &copy; 2026 | Data sourced from public records</p>
+        <p class="disclaimer">Last updated: January 2026</p>
+    </footer>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
