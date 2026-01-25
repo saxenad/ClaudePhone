@@ -117,6 +117,110 @@ header {
     box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
 }
 
+/* Map Section */
+.map-section {
+    max-width: 1400px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.map-header {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.map-header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.map-header p {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+}
+
+.map-container {
+    height: 450px;
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 1;
+}
+
+/* Custom Marker Popup */
+.custom-popup .leaflet-popup-content-wrapper {
+    border-radius: 8px;
+    padding: 0;
+}
+
+.custom-popup .leaflet-popup-content {
+    margin: 0;
+    min-width: 200px;
+}
+
+.popup-content {
+    padding: 0.75rem 1rem;
+}
+
+.popup-content h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.popup-content p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.popup-content .popup-status {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.popup-content .popup-link {
+    display: inline-block;
+    margin-top: 0.5rem;
+    color: var(--accent-color);
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.popup-content .popup-link:hover {
+    text-decoration: underline;
+}
+
+/* Custom marker icons */
+.marker-under-construction {
+    background-color: #f59e0b;
+    border: 2px solid #92400e;
+}
+
+.marker-proposed {
+    background-color: #3b82f6;
+    border: 2px solid #1e40af;
+}
+
+.marker-approved {
+    background-color: #8b5cf6;
+    border: 2px solid #5b21b6;
+}
+
+.marker-completed {
+    background-color: #10b981;
+    border: 2px solid #065f46;
+}
+
 /* Projects Grid */
 .projects-grid {
     display: grid;
@@ -404,6 +508,14 @@ footer p {
 
     .modal-grid {
         grid-template-columns: 1fr;
+    }
+
+    .map-section {
+        padding: 0 1rem;
+    }
+
+    .map-container {
+        height: 350px;
     }
 }
 

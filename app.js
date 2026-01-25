@@ -16,14 +16,132 @@ document.addEventListener('DOMContentLoaded', function() {
     const proposedEl = document.getElementById('proposed');
     const completedEl = document.getElementById('completed-2024');
 
+    // Map variables
+    let map;
+    let markers = [];
+    let markerLayer;
+
     // Initialize the application
     init();
 
     function init() {
         updateStats();
         renderProjects(constructionProjects);
+        initMap();
         setupEventListeners();
     }
+
+    // Initialize the Leaflet map
+    function initMap() {
+        // Center on West Loop, Chicago
+        const westLoopCenter = [41.8825, -87.6550];
+
+        map = L.map('map').setView(westLoopCenter, 14);
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Create a layer group for markers
+        markerLayer = L.layerGroup().addTo(map);
+
+        // Add markers for all projects
+        addMarkersToMap(constructionProjects);
+    }
+
+    // Add markers to the map
+    function addMarkersToMap(projects) {
+        // Clear existing markers
+        markerLayer.clearLayers();
+        markers = [];
+
+        projects.forEach(project => {
+            if (project.lat && project.lng) {
+                const marker = createMarker(project);
+                markers.push({ marker, projectId: project.id });
+                marker.addTo(markerLayer);
+            }
+        });
+
+        // Fit map bounds to show all markers if there are any
+        if (markers.length > 0) {
+            const group = L.featureGroup(markers.map(m => m.marker));
+            map.fitBounds(group.getBounds().pad(0.1));
+        }
+    }
+
+    // Create a custom marker with popup
+    function createMarker(project) {
+        const statusColors = {
+            'under-construction': '#f59e0b',
+            'proposed': '#3b82f6',
+            'approved': '#8b5cf6',
+            'completed': '#10b981'
+        };
+
+        const color = statusColors[project.status] || '#6b7280';
+
+        // Create custom icon
+        const icon = L.divIcon({
+            className: 'custom-marker',
+            html: `<div style="
+                background-color: ${color};
+                width: 30px;
+                height: 30px;
+                border-radius: 50% 50% 50% 0;
+                transform: rotate(-45deg);
+                border: 3px solid white;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            "></div>`,
+            iconSize: [30, 30],
+            iconAnchor: [15, 30],
+            popupAnchor: [0, -30]
+        });
+
+        const marker = L.marker([project.lat, project.lng], { icon });
+
+        // Create popup content
+        const statusText = formatStatus(project.status);
+        const statusBgColors = {
+            'under-construction': '#fef3c7',
+            'proposed': '#dbeafe',
+            'approved': '#e0e7ff',
+            'completed': '#d1fae5'
+        };
+        const statusTextColors = {
+            'under-construction': '#92400e',
+            'proposed': '#1e40af',
+            'approved': '#3730a3',
+            'completed': '#065f46'
+        };
+
+        const popupContent = `
+            <div class="popup-content">
+                <h3>${project.name}</h3>
+                <p>${project.address}</p>
+                <span class="popup-status" style="
+                    background: ${statusBgColors[project.status]};
+                    color: ${statusTextColors[project.status]};
+                ">${statusText}</span>
+                <br>
+                <a class="popup-link" onclick="window.openProjectModal(${project.id})">View Details</a>
+            </div>
+        `;
+
+        marker.bindPopup(popupContent, {
+            className: 'custom-popup',
+            maxWidth: 250
+        });
+
+        return marker;
+    }
+
+    // Expose openModal globally for popup links
+    window.openProjectModal = function(projectId) {
+        openModal(projectId);
+    };
 
     // Update statistics
     function updateStats() {
@@ -282,6 +400,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         renderProjects(filtered);
+
+        // Update map markers based on filtered projects
+        addMarkersToMap(filtered);
     }
 
     // Utility functions
