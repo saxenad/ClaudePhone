@@ -41,26 +41,6 @@ body {
   overflow-x: hidden;
 }
 
-/* ── Route-lines SVG pattern ─────────────────── */
-.route-bg {
-  position: relative;
-  overflow: hidden;
-}
-.route-bg::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg width='160' height='160' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 56 L56 56 L56 0' fill='none' stroke='currentColor' stroke-width='1.2'/%3E%3Cpath d='M104 0 L104 104 L160 104' fill='none' stroke='currentColor' stroke-width='1.2'/%3E%3Cpath d='M0 120 L32 120 L32 160' fill='none' stroke='currentColor' stroke-width='1.2'/%3E%3Cpath d='M136 160 L136 56 L160 56' fill='none' stroke='currentColor' stroke-width='1.2'/%3E%3Ccircle cx='56' cy='56' r='2.5' fill='currentColor'/%3E%3Ccircle cx='104' cy='104' r='2.5' fill='currentColor'/%3E%3Ccircle cx='32' cy='120' r='2.5' fill='currentColor'/%3E%3Ccircle cx='136' cy='56' r='2.5' fill='currentColor'/%3E%3C/svg%3E");
-  background-size: 160px 160px;
-  pointer-events: none;
-  z-index: 0;
-}
-.route-bg > * { position: relative; z-index: 1; }
-
-/* Route lines color per section */
-.on-cobalt::before { color: rgba(255,255,255,0.07); }
-.on-navy::before   { color: rgba(255,255,255,0.05); }
-.on-tan::before    { color: rgba(23,92,255,0.06); }
 
 /* ── Crosshatch texture ───────────────────────── */
 .xhatch::after {
@@ -778,7 +758,7 @@ h2 { font-size: clamp(28px, 3.5vw, 52px); font-weight: 700; }
 <!-- ════════════════════════════════════════════
      HERO
 ════════════════════════════════════════════ -->
-<section id="hero" class="route-bg on-cobalt">
+<section id="hero">
   <div class="inner">
     <div class="hero-overline r">
       <div class="hero-pill">Engineering &amp; Product Leadership</div>
@@ -800,7 +780,7 @@ h2 { font-size: clamp(28px, 3.5vw, 52px); font-weight: 700; }
 <!-- ════════════════════════════════════════════
      OLD WORLD
 ════════════════════════════════════════════ -->
-<section id="old-world" class="route-bg on-tan">
+<section id="old-world">
   <div class="inner">
     <p class="eyebrow eyebrow-cobalt r">Scene 1</p>
     <h2 class="r" data-d="1">The Era of Specialization</h2>
@@ -899,7 +879,7 @@ h2 { font-size: clamp(28px, 3.5vw, 52px); font-weight: 700; }
 <!-- ════════════════════════════════════════════
      THE SHIFT
 ════════════════════════════════════════════ -->
-<section id="shift" class="route-bg on-navy">
+<section id="shift" class="on-navy">
   <div class="inner">
     <p class="eyebrow eyebrow-white r">Scene 3</p>
     <h2 class="r" data-d="1" style="color:var(--white);">The Wall Starts to Disappear</h2>
@@ -988,7 +968,7 @@ h2 { font-size: clamp(28px, 3.5vw, 52px); font-weight: 700; }
 <!-- ════════════════════════════════════════════
      LIFECYCLE
 ════════════════════════════════════════════ -->
-<section id="lifecycle" class="route-bg on-tan">
+<section id="lifecycle">
   <div class="inner">
     <p class="eyebrow eyebrow-cobalt r">Scene 5</p>
     <h2 class="r" data-d="1">Ownership Expands</h2>
@@ -1117,7 +1097,7 @@ h2 { font-size: clamp(28px, 3.5vw, 52px); font-weight: 700; }
 <!-- ════════════════════════════════════════════
      THE FUTURE
 ════════════════════════════════════════════ -->
-<section id="future" class="route-bg on-cobalt">
+<section id="future">
   <div class="inner">
     <p class="eyebrow eyebrow-white r" style="text-align:center;">The Future</p>
 
