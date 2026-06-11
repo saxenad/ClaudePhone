@@ -3,1179 +3,1336 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Builder — Role Evolution in the Age of AI</title>
+<title>The Builder — ShipBob Engineering & Product</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
+/* ── Brand tokens ─────────────────────────────── */
 :root {
-  --bg: #07070e;
-  --pm: #60a5fa;
-  --eng: #34d399;
-  --builder: #a78bfa;
-  --text: #ffffff;
-  --muted: rgba(255,255,255,0.35);
-  --subtle: rgba(255,255,255,0.06);
-  --border: rgba(255,255,255,0.08);
-  --ease: cubic-bezier(0.16,1,0.3,1);
+  --cobalt:   #175CFF;
+  --tan:      #F1E7DD;
+  --navy:     #0A083B;
+  --sky:      #79D7FF;
+  --green:    #D7EE6F;
+  --white:    #FFFFFF;
+  --cobalt-12: rgba(23,92,255,0.12);
+  --cobalt-20: rgba(23,92,255,0.20);
+  --cobalt-06: rgba(23,92,255,0.06);
+  --sky-15:   rgba(121,215,255,0.15);
+  --sky-30:   rgba(121,215,255,0.30);
+  --green-20: rgba(215,238,111,0.20);
+  --green-40: rgba(215,238,111,0.40);
+  --white-10: rgba(255,255,255,0.10);
+  --white-20: rgba(255,255,255,0.20);
+  --white-60: rgba(255,255,255,0.60);
+  --navy-08:  rgba(10,8,59,0.08);
+  --navy-15:  rgba(10,8,59,0.15);
+  --ease:     cubic-bezier(0.16,1,0.3,1);
 }
 
-html,body {
-  width:100%;height:100%;overflow:hidden;
-  background:var(--bg);
-  font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
-  color:var(--text);
-  -webkit-font-smoothing:antialiased;
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Space Grotesk', -apple-system, sans-serif;
+  background: var(--tan);
+  color: var(--navy);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
-/* ── Layout ── */
-.deck { width:100%;height:100%;position:relative; }
+/* ── Route-lines SVG pattern ─────────────────── */
+.route-bg {
+  position: relative;
+  overflow: hidden;
+}
+.route-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='160' height='160' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 56 L56 56 L56 0' fill='none' stroke='currentColor' stroke-width='1.2'/%3E%3Cpath d='M104 0 L104 104 L160 104' fill='none' stroke='currentColor' stroke-width='1.2'/%3E%3Cpath d='M0 120 L32 120 L32 160' fill='none' stroke='currentColor' stroke-width='1.2'/%3E%3Cpath d='M136 160 L136 56 L160 56' fill='none' stroke='currentColor' stroke-width='1.2'/%3E%3Ccircle cx='56' cy='56' r='2.5' fill='currentColor'/%3E%3Ccircle cx='104' cy='104' r='2.5' fill='currentColor'/%3E%3Ccircle cx='32' cy='120' r='2.5' fill='currentColor'/%3E%3Ccircle cx='136' cy='56' r='2.5' fill='currentColor'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  pointer-events: none;
+  z-index: 0;
+}
+.route-bg > * { position: relative; z-index: 1; }
 
-.scene {
-  position:absolute;inset:0;
-  display:flex;flex-direction:column;
-  align-items:center;justify-content:center;
-  padding:80px 48px 96px;
-  opacity:0;pointer-events:none;
-  transition:opacity 0.7s ease;
-}
-.scene.active { opacity:1;pointer-events:all; }
+/* Route lines color per section */
+.on-cobalt::before { color: rgba(255,255,255,0.07); }
+.on-navy::before   { color: rgba(255,255,255,0.05); }
+.on-tan::before    { color: rgba(23,92,255,0.06); }
 
-/* ── Progress bar ── */
-.progress {
-  position:fixed;top:0;left:0;right:0;height:1px;
-  background:var(--border);z-index:200;
-}
-.progress-fill {
-  height:100%;
-  background:linear-gradient(90deg,rgba(99,102,241,0.6),rgba(139,92,246,0.8));
-  transition:width 0.6s var(--ease);
-}
-
-/* ── Scene counter ── */
-.counter {
-  position:fixed;top:28px;right:36px;
-  font-size:11px;font-weight:500;
-  letter-spacing:0.12em;text-transform:uppercase;
-  color:rgba(255,255,255,0.18);z-index:200;
-}
-
-/* ── Nav dots ── */
-.nav {
-  position:fixed;bottom:32px;left:50%;
-  transform:translateX(-50%);
-  display:flex;gap:6px;z-index:200;
-}
-.dot {
-  width:5px;height:5px;border-radius:50%;
-  background:rgba(255,255,255,0.15);
-  cursor:pointer;transition:all 0.3s ease;
-}
-.dot.on { width:20px;border-radius:2.5px;background:rgba(255,255,255,0.5); }
-
-/* ── Hint ── */
-.hint {
-  position:fixed;bottom:68px;left:50%;
-  transform:translateX(-50%);
-  font-size:10px;letter-spacing:0.18em;text-transform:uppercase;
-  color:rgba(255,255,255,0.12);
-  opacity:0;pointer-events:none;
-  animation:hintFade 4s ease 2s forwards;
-}
-@keyframes hintFade {
-  0%{opacity:0}20%{opacity:1}80%{opacity:1}100%{opacity:0}
+/* ── Crosshatch texture ───────────────────────── */
+.xhatch::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(23,92,255,0.03) 0,rgba(23,92,255,0.03) 1px, transparent 1px, transparent 9px),
+    repeating-linear-gradient(-45deg,rgba(23,92,255,0.03) 0,rgba(23,92,255,0.03) 1px, transparent 1px, transparent 9px);
+  pointer-events: none;
+  z-index: 0;
 }
 
-/* ── Typography helpers ── */
+/* ── Scroll reveal ───────────────────────────── */
+.r {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+}
+.r.on { opacity: 1; transform: translateY(0); }
+.r[data-d="1"] { transition-delay: 0.10s; }
+.r[data-d="2"] { transition-delay: 0.20s; }
+.r[data-d="3"] { transition-delay: 0.30s; }
+.r[data-d="4"] { transition-delay: 0.40s; }
+.r[data-d="5"] { transition-delay: 0.50s; }
+.r[data-d="6"] { transition-delay: 0.60s; }
+.r[data-d="7"] { transition-delay: 0.70s; }
+.r[data-d="8"] { transition-delay: 0.80s; }
+
+/* ── Layout helpers ──────────────────────────── */
+section {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 48px;
+}
+.inner {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+/* ── Typography ──────────────────────────────── */
 .eyebrow {
-  font-size:11px;font-weight:600;letter-spacing:0.18em;
-  text-transform:uppercase;color:var(--muted);
-  margin-bottom:36px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
 }
-.headline {
-  font-size:clamp(26px,3.5vw,48px);font-weight:700;
-  letter-spacing:-0.03em;line-height:1.15;
-  text-align:center;
-}
-.caption {
-  font-size:clamp(13px,1.4vw,16px);color:var(--muted);
-  text-align:center;line-height:1.7;margin-top:20px;
-}
-.caption em { color:rgba(255,255,255,0.7);font-style:normal; }
+.eyebrow-cobalt { color: var(--cobalt); }
+.eyebrow-white  { color: var(--white-60); }
+.eyebrow-navy   { color: rgba(10,8,59,0.5); }
 
-/* ── Animation primitives ── */
-.rise {
-  opacity:0;transform:translateY(10px);
-  transition:opacity 0.6s var(--ease),transform 0.6s var(--ease);
+h1, h2 {
+  font-family: 'Saira', sans-serif;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
 }
-.rise.in { opacity:1;transform:translateY(0); }
+h1 { font-size: clamp(48px, 6vw, 88px); font-weight: 800; }
+h2 { font-size: clamp(28px, 3.5vw, 52px); font-weight: 700; }
 
-@keyframes pulseRing {
-  0%,100%{box-shadow:0 0 0 0 rgba(167,139,250,0.15)}
-  50%{box-shadow:0 0 0 12px rgba(167,139,250,0)}
+.lead {
+  font-size: clamp(16px, 1.8vw, 21px);
+  font-weight: 400;
+  line-height: 1.65;
+  max-width: 640px;
+}
+.caption-text {
+  font-size: clamp(13px, 1.3vw, 16px);
+  font-weight: 500;
+  font-style: italic;
+  line-height: 1.6;
 }
 
-/* ============================================================
-   SCENE 1 — THE ERA OF SPECIALIZATION
-   ============================================================ */
+/* ── Data callout card ───────────────────────── */
+.callout {
+  background: var(--white);
+  border-left: 3px solid var(--cobalt);
+  border-radius: 6px;
+  padding: 20px 24px;
+  display: inline-block;
+}
+.callout-label { font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(10,8,59,0.4); margin-bottom: 6px; }
+.callout-value { font-family: 'Saira', sans-serif; font-size: clamp(18px,2.2vw,28px); font-weight: 800; color: var(--cobalt); line-height: 1; }
+.callout-sub   { font-size: 12px; color: rgba(10,8,59,0.5); margin-top: 4px; }
 
-.s1-wrap {
-  display:flex;align-items:stretch;gap:0;
-  width:min(780px,88vw);height:min(400px,60vh);
-  position:relative;
+/* ── Tag / chip ──────────────────────────────── */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-size: 12px; font-weight: 600;
+  border: 1px solid;
+  letter-spacing: 0.02em;
 }
-.col {
-  flex:1;display:flex;flex-direction:column;
-  padding:28px 24px;
-  border:1px solid var(--border);
-}
-.col-pm {
-  background:rgba(96,165,250,0.04);
-  border-color:rgba(96,165,250,0.12);
-  border-radius:8px 0 0 8px;
-}
-.col-eng {
-  background:rgba(52,211,153,0.04);
-  border-color:rgba(52,211,153,0.12);
-  border-radius:0 8px 8px 0;
-}
-.col-head {
-  font-size:11px;font-weight:700;letter-spacing:0.14em;
-  text-transform:uppercase;margin-bottom:18px;
-}
-.col-pm .col-head { color:var(--pm); }
-.col-eng .col-head { color:var(--eng); }
-.col-item {
-  font-size:12px;font-weight:400;
-  color:rgba(255,255,255,0.45);
-  padding:7px 0;
-  border-bottom:1px solid rgba(255,255,255,0.05);
-  opacity:0;
-  transition:opacity 0.4s var(--ease),transform 0.4s var(--ease);
-}
-.col-pm .col-item { transform:translateX(-6px); }
-.col-eng .col-item { transform:translateX(6px); }
-.col-item.in { opacity:1;transform:translateX(0); }
 
-.wall {
-  width:3px;
-  background:rgba(255,255,255,0.1);
-  flex-shrink:0;position:relative;
-  transition:all 1.2s ease;
+/* ═══════════════════════════════════════════════
+   SECTION 0 — HERO  (Cobalt)
+═══════════════════════════════════════════════ */
+#hero {
+  background: var(--cobalt);
+  color: var(--white);
+  min-height: 100vh;
+  text-align: center;
 }
-.wall.cracking {
-  background:rgba(255,255,255,0.04);
-  filter:drop-shadow(0 0 8px rgba(239,68,68,0.2));
+#hero .inner { display: flex; flex-direction: column; align-items: center; gap: 0; }
+#hero h1 { color: var(--white); margin-bottom: 24px; }
+#hero .lead { color: var(--white-60); margin: 0 auto; text-align: center; }
+#hero .scroll-cue {
+  margin-top: 64px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--white-20);
 }
-.wall.gone { width:0;opacity:0; }
+.arrow-down {
+  width: 1px; height: 48px;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.4), transparent);
+  animation: arrowPulse 2s ease-in-out infinite;
+}
+@keyframes arrowPulse {
+  0%,100%{opacity:0.3;transform:translateY(0)}
+  50%{opacity:1;transform:translateY(6px)}
+}
+.hero-overline {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 32px;
+}
+.hero-pill {
+  padding: 6px 16px; background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 99px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.14em;
+  text-transform: uppercase; color: rgba(255,255,255,0.7);
+}
+
+/* ═══════════════════════════════════════════════
+   SECTION 1 — OLD WORLD  (Tan)
+═══════════════════════════════════════════════ */
+#old-world { background: var(--tan); }
+#old-world .inner { display: flex; flex-direction: column; gap: 48px; }
+
+.split-header {
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: 0;
+  align-items: stretch;
+  border: 1px solid var(--navy-15);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.split-col {
+  padding: 32px 28px;
+}
+.split-col-pm  { background: rgba(121,215,255,0.08); }
+.split-col-eng { background: rgba(215,238,111,0.12); }
+.split-wall {
+  width: 3px;
+  background: var(--navy);
+  flex-shrink: 0;
+  opacity: 0.18;
+}
+.split-col-head {
+  font-family: 'Saira', sans-serif;
+  font-size: 13px; font-weight: 800;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  margin-bottom: 20px;
+  display: flex; align-items: center; gap: 8px;
+}
+.col-head-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.split-col-pm  .col-head-dot { background: var(--sky); border: 1px solid rgba(121,215,255,0.6); }
+.split-col-eng .col-head-dot { background: var(--green); border: 1px solid rgba(215,238,111,0.7); }
+.split-col-pm  .split-col-head { color: #1A5AA8; }
+.split-col-eng .split-col-head { color: #4A5E00; }
+
+.split-item {
+  font-size: 13px; font-weight: 400;
+  color: rgba(10,8,59,0.6);
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(10,8,59,0.07);
+  display: flex; align-items: center; gap: 8px;
+}
+.split-item:last-child { border-bottom: none; }
+.split-item::before { content: '→'; font-size: 10px; color: rgba(10,8,59,0.25); flex-shrink: 0; }
 
 /* handoff token */
-.token {
-  position:absolute;
-  width:22px;height:22px;border-radius:50%;
-  background:rgba(255,255,255,0.85);
-  box-shadow:0 0 16px rgba(255,255,255,0.2);
-  top:50%;left:-230px;
-  transform:translateY(-50%);
-  transition:left 2.2s var(--ease),opacity 0.5s ease;
-  z-index:10;
+.handoff-row {
+  display: flex; align-items: center; gap: 0;
+  height: 52px;
+  position: relative;
+  overflow: visible;
 }
-.token.slide { left:230px; }
-
-.s1-caption {
-  margin-top:24px;text-align:center;
-  opacity:0;transition:opacity 0.7s ease;
-  font-size:13px;color:var(--muted);
-  font-style:italic;letter-spacing:0.02em;
+.handoff-rail {
+  flex: 1; height: 1px;
+  background: linear-gradient(90deg, rgba(121,215,255,0.4) 0%, rgba(23,92,255,0.6) 50%, rgba(215,238,111,0.5) 100%);
+  position: relative;
 }
-.s1-caption.in { opacity:1; }
-
-/* ============================================================
-   SCENE 2 — COST OF HANDOFFS
-   ============================================================ */
-
-.s2-pipe {
-  display:flex;align-items:center;
-  width:min(680px,88vw);height:52px;
-  position:relative;margin-top:8px;overflow:visible;
+.handoff-dot {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--cobalt);
+  box-shadow: 0 0 0 4px rgba(23,92,255,0.15);
+  position: absolute; top: 50%;
+  transform: translateY(-50%) translateX(-50%);
+  left: 0;
+  transition: left 2s var(--ease);
 }
-.pipe-pm {
-  width:220px;height:100%;flex-shrink:0;
-  background:rgba(96,165,250,0.08);
-  border:1px solid rgba(96,165,250,0.18);
-  border-radius:5px 0 0 5px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:11px;font-weight:700;letter-spacing:0.1em;
-  text-transform:uppercase;color:var(--pm);
+.handoff-dot.slide { left: 100%; }
+.handoff-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+  color: rgba(10,8,59,0.35);
+  text-align: center; margin-top: 8px;
 }
-.pipe-block {
-  flex:1;height:100%;
-  background:rgba(239,68,68,0.05);
-  border-top:1px solid rgba(239,68,68,0.15);
-  border-bottom:1px solid rgba(239,68,68,0.15);
-  display:flex;align-items:center;justify-content:center;
-  position:relative;overflow:hidden;
-  transition:background 0.5s ease;
+.old-world-caption {
+  text-align: center;
+  padding: 24px 28px;
+  background: var(--white);
+  border-radius: 8px;
+  border: 1px solid var(--navy-08);
 }
-.pipe-block.hot {
-  background:rgba(239,68,68,0.1);
-  border-color:rgba(239,68,68,0.3);
-}
-.pipe-eng {
-  width:220px;height:100%;flex-shrink:0;
-  background:rgba(52,211,153,0.08);
-  border:1px solid rgba(52,211,153,0.18);
-  border-radius:0 5px 5px 0;
-  display:flex;align-items:center;justify-content:center;
-  font-size:11px;font-weight:700;letter-spacing:0.1em;
-  text-transform:uppercase;color:var(--eng);
+.old-world-caption p {
+  font-family: 'Saira', sans-serif;
+  font-size: clamp(16px,2vw,22px);
+  font-weight: 600;
+  color: var(--navy);
+  opacity: 0.55;
 }
 
-/* slow token */
+/* ═══════════════════════════════════════════════
+   SECTION 2 — COST OF HANDOFFS  (White)
+═══════════════════════════════════════════════ */
+#handoffs { background: var(--white); }
+#handoffs .inner { display: flex; flex-direction: column; gap: 48px; }
+
+.pipeline-wrap { position: relative; }
+.pipeline {
+  display: grid;
+  grid-template-columns: 1fr 140px 1fr;
+  align-items: stretch;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--navy-08);
+  height: 72px;
+}
+.pipe-seg {
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Saira', sans-serif;
+  font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.pipe-pm  { background: rgba(121,215,255,0.1); color: #1A5AA8; border-right: 1px solid var(--navy-08); }
+.pipe-eng { background: rgba(215,238,111,0.15); color: #4A5E00; border-left: 1px solid var(--navy-08); }
+.pipe-gap {
+  background: rgba(220,38,38,0.05);
+  border-top: 1px solid rgba(220,38,38,0.15);
+  border-bottom: 1px solid rgba(220,38,38,0.15);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px;
+  transition: background 0.5s ease;
+  position: relative;
+}
+.pipe-gap.hot { background: rgba(220,38,38,0.10); border-color: rgba(220,38,38,0.3); }
+.pipe-gap-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(220,38,38,0.6); }
+.pipe-gap-arrows { font-size: 14px; color: rgba(220,38,38,0.4); letter-spacing: -2px; }
+
+/* stalled token */
 .s2-token {
-  position:absolute;width:18px;height:18px;
-  border-radius:50%;background:rgba(255,255,255,0.8);
-  top:50%;transform:translateY(-50%);
-  left:-10px;z-index:10;
-  transition:left 1s var(--ease);
+  position: absolute;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--cobalt);
+  box-shadow: 0 0 0 3px rgba(23,92,255,0.2);
+  top: 50%; transform: translateY(-50%);
+  left: -16px;
+  transition: left 1s var(--ease);
+  z-index: 10;
 }
-.s2-token.phase1 { left:210px; }
-.s2-token.phase2 {
-  left:225px;
-  transition:left 5s cubic-bezier(0.85,0,1,1),opacity 2s ease;
-  opacity:0.2;
-}
+.s2-token.p1 { left: calc(50% - 70px); }
+.s2-token.p2 { left: calc(50% - 16px); transition: left 5s cubic-bezier(0.9,0,1,1), opacity 2s ease; opacity: 0.15; }
 
 /* friction chips */
-.chips {
-  display:flex;flex-wrap:wrap;gap:8px;
-  justify-content:center;margin-top:28px;
-  max-width:520px;
+.friction-grid {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  justify-content: center;
 }
-.chip {
-  padding:5px 14px;border-radius:99px;
-  background:rgba(239,68,68,0.06);
-  border:1px solid rgba(239,68,68,0.14);
-  font-size:11px;font-weight:500;
-  color:rgba(239,68,68,0.65);
-  opacity:0;transform:scale(0.85);
-  transition:opacity 0.4s ease,transform 0.4s var(--ease);
+.fchip {
+  padding: 8px 18px;
+  background: rgba(220,38,38,0.05);
+  border: 1px solid rgba(220,38,38,0.15);
+  border-radius: 99px;
+  font-size: 12px; font-weight: 600;
+  color: rgba(180,20,20,0.7);
+  opacity: 0; transform: scale(0.9);
+  transition: opacity 0.4s var(--ease), transform 0.4s var(--ease);
 }
-.chip.in { opacity:1;transform:scale(1); }
+.fchip.on { opacity: 1; transform: scale(1); }
 
-/* ============================================================
-   SCENE 3 — THE WALL DISSOLVES
-   ============================================================ */
+.handoffs-callout {
+  display: flex; gap: 24px; flex-wrap: wrap; justify-content: center;
+}
 
-.s3-stage {
-  position:relative;
-  width:min(700px,88vw);height:min(280px,42vh);
-  margin:16px 0;
+/* ═══════════════════════════════════════════════
+   SECTION 3 — THE SHIFT  (Navy)
+═══════════════════════════════════════════════ */
+#shift {
+  background: var(--navy);
+  color: var(--white);
 }
-.s3-pm,.s3-eng {
-  position:absolute;top:0;
-  width:300px;height:100%;
-  border-radius:8px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:13px;font-weight:700;letter-spacing:0.08em;
-  text-transform:uppercase;
-  transition:all 1.6s var(--ease);
-}
-.s3-pm {
-  left:0;
-  background:rgba(96,165,250,0.06);
-  border:1px solid rgba(96,165,250,0.15);
-  color:var(--pm);
-}
-.s3-eng {
-  right:0;
-  background:rgba(52,211,153,0.06);
-  border:1px solid rgba(52,211,153,0.15);
-  color:var(--eng);
-}
-.s3-wall {
-  position:absolute;left:50%;top:0;
-  transform:translateX(-50%);
-  width:3px;height:100%;
-  background:rgba(255,255,255,0.12);
-  transition:all 1.4s ease;
-}
-.s3-wall.gone { opacity:0;width:0; }
+#shift .inner { display: flex; flex-direction: column; gap: 52px; }
 
-/* force labels */
-.forces {
-  position:absolute;display:flex;flex-direction:column;gap:7px;
-  opacity:0;transition:opacity 0.6s ease;
+.dissolve-stage {
+  position: relative;
+  height: 220px;
+  width: 100%;
+  max-width: 780px;
+  margin: 0 auto;
 }
-.forces.in { opacity:1; }
-.force-l { left:16px;top:50%;transform:translateY(-50%); }
-.force-r { right:16px;top:50%;transform:translateY(-50%);text-align:right; }
+.d-col {
+  position: absolute; top: 0;
+  width: 320px; height: 100%;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 10px;
+  font-family: 'Saira', sans-serif;
+  font-size: 14px; font-weight: 800;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  transition: all 1.8s var(--ease);
+}
+.d-col-pm  { left: 0; background: rgba(121,215,255,0.08); border: 1px solid rgba(121,215,255,0.18); color: var(--sky); }
+.d-col-eng { right: 0; background: rgba(215,238,111,0.08); border: 1px solid rgba(215,238,111,0.18); color: var(--green); }
+.d-wall {
+  position: absolute; left: 50%; top: 0;
+  transform: translateX(-50%);
+  width: 3px; height: 100%;
+  background: rgba(255,255,255,0.18);
+  transition: all 1.6s ease;
+}
+.d-wall.gone { opacity: 0; width: 0; }
+.d-col-pm.merge  { left: 80px; opacity: 0.6; }
+.d-col-eng.merge { right: 80px; opacity: 0.6; }
+
+/* force pills */
+.forces-row {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  max-width: 780px; margin: 0 auto; width: 100%;
+  opacity: 0; transition: opacity 0.6s ease;
+}
+.forces-row.on { opacity: 1; }
+.force-list { display: flex; flex-direction: column; gap: 8px; }
 .force-item {
-  font-size:10px;font-weight:500;
-  color:rgba(255,255,255,0.4);letter-spacing:0.06em;
+  font-size: 12px; font-weight: 500;
+  color: rgba(255,255,255,0.45);
+  display: flex; align-items: center; gap: 6px;
 }
-/* arrows pointing inward */
-.force-l .force-item::before { content:'→ '; color:rgba(167,139,250,0.4); }
-.force-r .force-item::after  { content:' ←'; color:rgba(167,139,250,0.4); }
+.force-item.right { flex-direction: row-reverse; }
+.force-arrow { color: rgba(121,215,255,0.5); font-size: 10px; }
 
-/* overlap state */
-.s3-stage.overlapping .s3-pm { left:80px; }
-.s3-stage.overlapping .s3-eng { right:80px; }
+.shift-quote {
+  text-align: center;
+  font-family: 'Saira', sans-serif;
+  font-size: clamp(18px,2.5vw,32px);
+  font-weight: 700;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.3;
+  opacity: 0; transition: opacity 0.8s ease;
+  max-width: 680px; margin: 0 auto;
+}
+.shift-quote.on { opacity: 1; }
+.shift-quote em { color: var(--white); font-style: normal; }
 
-/* ============================================================
-   SCENE 4 — THE SPECTRUM + BUILDER ELEVATED
-   ============================================================ */
+/* ═══════════════════════════════════════════════
+   SECTION 4 — THE SPECTRUM  (White)
+═══════════════════════════════════════════════ */
+#spectrum { background: var(--white); }
+#spectrum .inner { display: flex; flex-direction: column; gap: 48px; }
 
-.s4-wrap {
-  width:min(820px,90vw);
-  position:relative;
-  padding-top:80px; /* room for elevated builder */
-}
-
-/* Elevated builder above spectrum */
-.s4-elevated {
-  position:absolute;top:0;left:50%;transform:translateX(-50%);
-  display:flex;flex-direction:column;align-items:center;gap:6px;
-  opacity:0;transition:opacity 0.7s var(--ease);
-}
-.s4-elevated.in { opacity:1; }
-.s4-elevated-badge {
-  padding:10px 28px;
-  background:rgba(167,139,250,0.1);
-  border:1px solid rgba(167,139,250,0.35);
-  border-radius:6px;
-  font-size:14px;font-weight:700;
-  color:var(--builder);letter-spacing:0.05em;
-  animation:pulseRing 2.5s ease-in-out infinite;
-}
-.s4-elevated-sub {
-  font-size:10px;color:rgba(167,139,250,0.5);
-  letter-spacing:0.08em;text-transform:uppercase;
-}
-.s4-stem {
-  width:1px;height:36px;
-  background:linear-gradient(to bottom,rgba(167,139,250,0.35),transparent);
-  margin-bottom:-2px;
+.spectrum-stage {
+  position: relative;
+  padding-top: 100px; /* room for elevated builder */
+  width: 100%;
 }
 
-/* spectrum line */
-.spectrum-line {
-  height:2px;border-radius:1px;
-  background:linear-gradient(90deg,
-    rgba(96,165,250,0.3) 0%,
-    rgba(167,139,250,0.6) 50%,
-    rgba(52,211,153,0.3) 100%);
-  position:relative;
-  opacity:0;transition:opacity 0.7s ease;
+/* Builder elevated box */
+.builder-elevated {
+  position: absolute; top: 0; left: 50%;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 0;
+  opacity: 0; transition: opacity 0.7s var(--ease);
+  z-index: 10;
 }
-.spectrum-line.in { opacity:1; }
-.spec-end {
-  position:absolute;bottom:10px;
-  font-size:10px;font-weight:600;letter-spacing:0.12em;
-  text-transform:uppercase;
+.builder-elevated.on { opacity: 1; }
+.builder-elevated-badge {
+  background: var(--cobalt);
+  color: var(--white);
+  padding: 12px 32px; border-radius: 7px;
+  font-family: 'Saira', sans-serif;
+  font-size: 16px; font-weight: 800; letter-spacing: 0.06em;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(23,92,255,0.25);
 }
-.spec-end.l { left:0;color:rgba(96,165,250,0.5); }
-.spec-end.r { right:0;color:rgba(52,211,153,0.5); }
+.builder-elevated-sub {
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(23,92,255,0.5); margin-top: 4px;
+}
+.builder-stem {
+  width: 1px; height: 36px;
+  background: linear-gradient(to bottom, rgba(23,92,255,0.4), transparent);
+}
 
-/* persona dots on spectrum */
+/* Spectrum bar */
+.spectrum-bar-wrap {
+  position: relative; margin: 0 0 64px;
+}
+.spectrum-bar {
+  height: 3px;
+  background: linear-gradient(90deg, rgba(121,215,255,0.5) 0%, var(--cobalt) 50%, rgba(215,238,111,0.6) 100%);
+  border-radius: 2px;
+  opacity: 0; transition: opacity 0.7s ease;
+}
+.spectrum-bar.on { opacity: 1; }
+.spec-label {
+  position: absolute; top: -28px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+}
+.spec-label.l { left: 0; color: #1A5AA8; }
+.spec-label.r { right: 0; color: #4A5E00; }
+
+/* Persona dots */
 .persona {
-  position:absolute;top:50%;transform:translate(-50%,-50%);
-  display:flex;flex-direction:column;align-items:center;
-  opacity:0;transition:opacity 0.5s ease;
+  position: absolute; top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center;
+  opacity: 0; transition: opacity 0.5s ease;
 }
-.persona.in { opacity:1; }
-.pdot {
-  width:9px;height:9px;border-radius:50%;
-  background:rgba(255,255,255,0.2);
+.persona.on { opacity: 1; }
+.persona-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 2px solid;
 }
-.pdot.builder-dot {
-  width:13px;height:13px;
-  background:rgba(167,139,250,0.3);
-  border:1px solid rgba(167,139,250,0.5);
-  opacity:0.4; /* dimmed — builder is above */
-}
-.plabel {
-  position:absolute;top:16px;
-  font-size:10px;font-weight:500;
-  color:rgba(255,255,255,0.35);
-  white-space:nowrap;
-  left:50%;transform:translateX(-50%);
-}
-.plabel.builder-label {
-  color:rgba(167,139,250,0.4);
-  font-size:10px;font-style:italic;
+.persona-label {
+  position: absolute; top: 18px;
+  font-size: 10px; font-weight: 600;
+  color: rgba(10,8,59,0.4);
+  white-space: nowrap;
+  left: 50%; transform: translateX(-50%);
 }
 
-.s4-note {
-  text-align:center;margin-top:32px;
-  font-size:12px;color:rgba(255,255,255,0.25);
-  letter-spacing:0.04em;
-  opacity:0;transition:opacity 0.7s ease;
+/* Spectrum note */
+.spectrum-insight {
+  display: flex; justify-content: center;
 }
-.s4-note.in { opacity:1; }
-
-/* ============================================================
-   SCENE 5 — OWNERSHIP EXPANDS
-   ============================================================ */
-
-.s5-wrap {
-  width:min(900px,94vw);
+.insight-card {
+  background: var(--tan);
+  border-radius: 8px;
+  padding: 20px 28px;
+  max-width: 560px;
+  text-align: center;
+  border: 1px solid var(--navy-08);
 }
+.insight-card p {
+  font-size: 14px; font-weight: 500;
+  color: rgba(10,8,59,0.55);
+  line-height: 1.6;
+}
+.insight-card strong { color: var(--cobalt); font-weight: 700; }
 
-/* phase track */
+/* ═══════════════════════════════════════════════
+   SECTION 5 — LIFECYCLE  (Tan)
+═══════════════════════════════════════════════ */
+#lifecycle { background: var(--tan); }
+#lifecycle .inner { display: flex; flex-direction: column; gap: 40px; }
+
+/* Phase track */
 .phase-track {
-  display:flex;gap:3px;margin-bottom:32px;
+  display: flex; gap: 3px;
+  border-radius: 6px; overflow: hidden;
 }
 .phase {
-  flex:1;height:36px;border-radius:3px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:9px;font-weight:700;letter-spacing:0.06em;
-  text-transform:uppercase;
-  background:rgba(255,255,255,0.03);
-  border:1px solid rgba(255,255,255,0.07);
-  color:rgba(255,255,255,0.2);
-  transition:all 0.5s ease;
-  white-space:nowrap;
-  overflow:hidden;
+  flex: 1; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+  background: rgba(10,8,59,0.05);
+  color: rgba(10,8,59,0.3);
+  border: 1px solid rgba(10,8,59,0.08);
+  border-radius: 3px;
+  white-space: nowrap; overflow: hidden;
 }
 
-/* ownership rows */
-.own-rows { display:flex;flex-direction:column;gap:16px; }
+/* Ownership rows */
+.own-section { display: flex; flex-direction: column; gap: 14px; }
 .own-row {
-  display:flex;align-items:center;gap:16px;
-  opacity:0;transform:translateY(6px);
-  transition:opacity 0.6s var(--ease),transform 0.6s var(--ease);
+  display: grid; grid-template-columns: 110px 1fr;
+  align-items: center; gap: 16px;
+  opacity: 0; transform: translateY(8px);
+  transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
 }
-.own-row.in { opacity:1;transform:translateY(0); }
-.own-label {
-  width:100px;flex-shrink:0;
-  font-size:10px;font-weight:700;
-  letter-spacing:0.1em;text-transform:uppercase;
-  text-align:right;
+.own-row.on { opacity: 1; transform: translateY(0); }
+.own-row-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; text-align: right;
 }
-.own-bar {
-  flex:1;height:36px;border-radius:4px;
-  background:rgba(255,255,255,0.02);
-  border:1px solid rgba(255,255,255,0.05);
-  position:relative;overflow:hidden;
+.own-bar-track {
+  height: 40px; border-radius: 5px;
+  background: rgba(10,8,59,0.04);
+  border: 1px solid rgba(10,8,59,0.08);
+  position: relative; overflow: hidden;
 }
-.own-fill {
-  position:absolute;top:0;left:0;height:100%;
-  border-radius:4px;width:0;
-  transition:width 1.4s var(--ease);
-  display:flex;align-items:center;padding-left:14px;
-  font-size:10px;font-weight:700;
-  letter-spacing:0.08em;text-transform:uppercase;
+.own-bar-fill {
+  position: absolute; top: 0; height: 100%;
+  border-radius: 4px; width: 0;
+  transition: width 1.4s var(--ease);
+  display: flex; align-items: center;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
 }
-.own-fill.right-align {
-  left:auto;right:0;
-  padding-left:0;padding-right:14px;
-  justify-content:flex-end;
+.own-bar-fill.from-right { left: auto; right: 0; justify-content: flex-end; padding-right: 12px; }
+.own-bar-fill.from-left  { left: 0; padding-left: 12px; }
+
+/* PM fill */
+.fill-pm { background: rgba(121,215,255,0.2); border: 1px solid rgba(121,215,255,0.4); color: #1A5AA8; }
+/* Eng fill */
+.fill-eng { background: rgba(215,238,111,0.25); border: 1px solid rgba(215,238,111,0.5); color: #4A5E00; }
+/* Builder fill */
+.fill-builder { background: var(--cobalt); color: var(--white); box-shadow: 0 4px 20px rgba(23,92,255,0.25); }
+
+.lifecycle-callouts {
+  display: flex; gap: 16px; flex-wrap: wrap;
 }
 
-.s5-caption {
-  margin-top:24px;text-align:center;
-  font-size:12px;color:rgba(255,255,255,0.25);
-  font-style:italic;
-  opacity:0;transition:opacity 0.6s ease;
-}
-.s5-caption.in { opacity:1; }
+/* ═══════════════════════════════════════════════
+   SECTION 6 — TWO PATHS  (White)
+═══════════════════════════════════════════════ */
+#paths { background: var(--white); }
+#paths .inner { display: flex; flex-direction: column; gap: 0; align-items: center; }
 
-/* ============================================================
-   SCENE 6 — TWO PATHS
-   ============================================================ */
+.paths-grid {
+  display: grid;
+  grid-template-columns: 1fr 60px 1fr;
+  width: 100%; max-width: 700px;
+  margin-bottom: 0;
+  gap: 0;
+}
+.path-col { display: flex; flex-direction: column; align-items: center; }
+.path-center { display: flex; flex-direction: column; align-items: center; }
 
-.s6-paths {
-  display:flex;gap:clamp(48px,8vw,120px);
-  align-items:flex-start;
-  margin-top:4px;
+.pn { /* path node */
+  width: 180px; max-width: 100%;
+  padding: 14px 18px;
+  border-radius: 7px;
+  text-align: center;
+  opacity: 0; transform: translateY(-8px);
+  transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
 }
-.s6-path { display:flex;flex-direction:column;align-items:center; }
-.pnode {
-  width:min(160px,34vw);
-  padding:12px 16px;border-radius:6px;
-  text-align:center;
-  opacity:0;transform:translateY(-6px);
-  transition:opacity 0.5s var(--ease),transform 0.5s var(--ease);
-}
-.pnode.in { opacity:1;transform:translateY(0); }
-.pnode-pm {
-  background:rgba(96,165,250,0.06);
-  border:1px solid rgba(96,165,250,0.14);
-}
-.pnode-eng {
-  background:rgba(52,211,153,0.06);
-  border:1px solid rgba(52,211,153,0.14);
-}
-.pnode-dim {
-  border-style:dashed !important;
-  opacity:0.5 !important;
-}
-.pnode-title { font-size:12px;font-weight:700; }
-.pnode-pm .pnode-title { color:var(--pm); }
-.pnode-eng .pnode-title { color:var(--eng); }
-.pnode-sub { font-size:10px;color:rgba(255,255,255,0.3);margin-top:2px; }
+.pn.on { opacity: 1; transform: translateY(0); }
+.pn-pm  { background: rgba(121,215,255,0.08); border: 1px solid rgba(121,215,255,0.2); }
+.pn-eng { background: rgba(215,238,111,0.12); border: 1px solid rgba(215,238,111,0.3); }
+.pn-dim { border-style: dashed !important; opacity: 0 !important; }
+.pn-dim.on { opacity: 0.5 !important; }
+.pn-title { font-family:'Saira',sans-serif; font-size: 13px; font-weight: 800; }
+.pn-pm  .pn-title { color: #1A5AA8; }
+.pn-eng .pn-title { color: #4A5E00; }
+.pn-sub  { font-size: 11px; color: rgba(10,8,59,0.4); margin-top: 3px; }
 
-.parrow {
-  width:1px;height:22px;
-  opacity:0;transition:opacity 0.4s ease;
+.path-arrow-v {
+  width: 1px; height: 20px;
+  opacity: 0; transition: opacity 0.4s ease;
 }
-.parrow.in { opacity:1; }
-.parrow-pm { background:rgba(96,165,250,0.2); }
-.parrow-eng { background:rgba(52,211,153,0.2); }
+.path-arrow-v.on { opacity: 1; }
+.arrow-pm  { background: rgba(121,215,255,0.3); }
+.arrow-eng { background: rgba(215,238,111,0.5); }
 
 /* convergence */
-.s6-merge {
-  margin-top:12px;
-  display:flex;flex-direction:column;align-items:center;
-  opacity:0;transition:opacity 0.7s var(--ease);
+.convergence {
+  display: flex; flex-direction: column; align-items: center;
+  width: 100%; max-width: 700px;
+  opacity: 0; transition: opacity 0.7s var(--ease);
 }
-.s6-merge.in { opacity:1; }
-.merge-lines svg { display:block; }
-.s6-builder-badge {
-  padding:14px 36px;
-  background:rgba(167,139,250,0.09);
-  border:1px solid rgba(167,139,250,0.32);
-  border-radius:8px;text-align:center;
-  animation:pulseRing 2.5s ease-in-out infinite;
+.convergence.on { opacity: 1; }
+.conv-lines svg { display: block; }
+.builder-node {
+  background: var(--cobalt);
+  color: var(--white);
+  border-radius: 8px;
+  padding: 18px 40px;
+  text-align: center;
+  box-shadow: 0 8px 40px rgba(23,92,255,0.2);
 }
-.s6-builder-badge-title {
-  font-size:16px;font-weight:800;
-  color:var(--builder);letter-spacing:0.04em;
+.builder-node-title {
+  font-family: 'Saira', sans-serif;
+  font-size: 22px; font-weight: 900; letter-spacing: 0.04em;
 }
-.s6-builder-badge-sub {
-  font-size:10px;color:rgba(167,139,250,0.45);
-  margin-top:3px;letter-spacing:0.06em;
+.builder-node-sub { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 4px; letter-spacing: 0.08em; }
+
+.paths-caption {
+  margin-top: 32px;
+  font-size: 15px; font-weight: 500; font-style: italic;
+  color: rgba(10,8,59,0.4); text-align: center;
+  opacity: 0; transition: opacity 0.7s ease;
+}
+.paths-caption.on { opacity: 1; }
+
+/* ═══════════════════════════════════════════════
+   SECTION 7 — THE FUTURE  (Cobalt)
+═══════════════════════════════════════════════ */
+#future {
+  background: var(--cobalt);
+  color: var(--white);
+}
+#future .inner { display: flex; flex-direction: column; gap: 56px; align-items: center; text-align: center; }
+
+#future .lead { color: rgba(255,255,255,0.65); margin: 0 auto; }
+#future .lead em { color: var(--white); font-style: normal; font-weight: 600; }
+#future .lead strong { color: var(--white); font-weight: 800; }
+
+/* hierarchy diagram */
+.hierarchy {
+  display: flex; flex-direction: column; align-items: center; gap: 0;
+  opacity: 0; transition: opacity 0.7s var(--ease);
+}
+.hierarchy.on { opacity: 1; }
+
+.hier-builder {
+  background: var(--white);
+  border-radius: 8px;
+  padding: 16px 48px;
+  text-align: center;
+  box-shadow: 0 8px 48px rgba(0,0,0,0.2);
+}
+.hier-builder-title {
+  font-family: 'Saira', sans-serif;
+  font-size: clamp(22px,3vw,36px); font-weight: 900;
+  color: var(--cobalt); letter-spacing: 0.03em;
+}
+.hier-builder-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: rgba(23,92,255,0.5);
+  margin-top: 4px;
 }
 
-/* ============================================================
-   SCENE 7 — THE FUTURE
-   ============================================================ */
+.hier-tree svg { display: block; margin: 0 auto; }
 
-.s7-wrap {
-  max-width:min(720px,90vw);
-  display:flex;flex-direction:column;align-items:center;
-  gap:0;
+.hier-peers {
+  display: flex; gap: clamp(32px,6vw,80px);
 }
+.hier-peer {
+  padding: 10px 28px; border-radius: 6px;
+  font-family: 'Saira', sans-serif;
+  font-size: 13px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.hier-peer-pm  { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.7); }
+.hier-peer-eng { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.7); }
 
-.s7-body {
-  font-size:clamp(15px,2vw,20px);
-  font-weight:400;
-  color:rgba(255,255,255,0.5);
-  line-height:1.75;text-align:center;
-  margin-bottom:20px;
+.final-statement {
+  font-family: 'Saira', sans-serif;
+  font-size: clamp(28px,4vw,52px);
+  font-weight: 800; letter-spacing: -0.02em;
+  line-height: 1.1; color: var(--white);
+  max-width: 760px; margin: 0 auto;
 }
-.s7-body em { color:rgba(255,255,255,0.85);font-style:normal;font-weight:500; }
-.s7-body strong { color:var(--builder);font-weight:700; }
-
-.s7-diagram {
-  margin-top:36px;
-  display:flex;flex-direction:column;align-items:center;gap:0;
-  opacity:0;transition:opacity 0.7s var(--ease);
-}
-.s7-diagram.in { opacity:1; }
-
-/* Builder node at top */
-.s7-builder-top {
-  padding:12px 36px;
-  background:rgba(167,139,250,0.1);
-  border:1px solid rgba(167,139,250,0.4);
-  border-radius:7px;
-  font-size:16px;font-weight:800;
-  color:var(--builder);letter-spacing:0.04em;
-  text-align:center;
-  animation:pulseRing 2.5s ease-in-out infinite;
-}
-.s7-builder-label {
-  font-size:9px;font-weight:500;
-  color:rgba(167,139,250,0.4);
-  letter-spacing:0.12em;text-transform:uppercase;
-  margin-top:4px;
+.final-tagline {
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+  margin-top: 16px;
 }
 
-.s7-tree-lines {
-  display:block;overflow:visible;
-  margin-top:2px;
+/* ── Nav dots (fixed) ─────────────────────────── */
+.site-nav {
+  position: fixed; right: 28px; top: 50%;
+  transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 8px;
+  z-index: 500;
 }
+.snav-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: rgba(10,8,59,0.2);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.snav-dot.active { background: var(--cobalt); height: 18px; border-radius: 2.5px; }
 
-.s7-peers {
-  display:flex;gap:clamp(32px,6vw,80px);
-  margin-top:0;
-}
-.s7-peer {
-  padding:9px 24px;
-  border-radius:5px;
-  font-size:12px;font-weight:700;
-  letter-spacing:0.06em;text-transform:uppercase;
-  text-align:center;
-}
-.s7-peer-pm {
-  background:rgba(96,165,250,0.06);
-  border:1px solid rgba(96,165,250,0.14);
-  color:rgba(96,165,250,0.6);
-}
-.s7-peer-eng {
-  background:rgba(52,211,153,0.06);
-  border:1px solid rgba(52,211,153,0.14);
-  color:rgba(52,211,153,0.6);
-}
+/* on cobalt/navy, dots are white */
+.site-nav.light .snav-dot { background: rgba(255,255,255,0.25); }
+.site-nav.light .snav-dot.active { background: var(--white); }
 
-.s7-tagline {
-  font-size:11px;color:rgba(255,255,255,0.2);
-  letter-spacing:0.1em;margin-top:20px;
-  opacity:0;transition:opacity 0.7s ease;
-  text-transform:uppercase;
+/* ── Responsive ──────────────────────────────── */
+@media (max-width: 700px) {
+  section { padding: 80px 24px; }
+  .split-header { grid-template-columns: 1fr; }
+  .split-wall { display: none; }
+  .pipeline { grid-template-columns: 1fr; height: auto; }
+  .pipe-gap { height: 48px; }
+  .paths-grid { grid-template-columns: 1fr; gap: 0; }
+  .path-center { display: none; }
+  .own-row { grid-template-columns: 80px 1fr; }
 }
-.s7-tagline.in { opacity:1; }
 </style>
 </head>
 <body>
 
-<div class="deck" id="deck">
+<!-- ── Fixed nav dots ── -->
+<nav class="site-nav" id="sitenav">
+  <div class="snav-dot active" data-target="hero"      title="Intro"></div>
+  <div class="snav-dot"       data-target="old-world"  title="Old World"></div>
+  <div class="snav-dot"       data-target="handoffs"   title="Handoffs"></div>
+  <div class="snav-dot"       data-target="shift"      title="The Shift"></div>
+  <div class="snav-dot"       data-target="spectrum"   title="Spectrum"></div>
+  <div class="snav-dot"       data-target="lifecycle"  title="Lifecycle"></div>
+  <div class="snav-dot"       data-target="paths"      title="Paths"></div>
+  <div class="snav-dot"       data-target="future"     title="Future"></div>
+</nav>
 
-  <div class="progress"><div class="progress-fill" id="pbar" style="width:14.28%"></div></div>
-  <div class="counter" id="counter">1 / 7</div>
-  <div class="nav" id="nav"></div>
-  <div class="hint">Click or press → to advance</div>
-
-  <!-- ══════════════════════════════════════════
-       SCENE 1 — THE ERA OF SPECIALIZATION
-  ══════════════════════════════════════════ -->
-  <div class="scene active" id="s1">
-    <div class="eyebrow rise" id="s1-ey">The Era of Specialization</div>
-
-    <div class="s1-wrap">
-      <div class="col col-pm" id="s1-cpm">
-        <div class="col-head">Product Management</div>
-        <div class="col-item" data-i="0">User Research</div>
-        <div class="col-item" data-i="1">Customer Discovery</div>
-        <div class="col-item" data-i="2">Stakeholder Alignment</div>
-        <div class="col-item" data-i="3">Requirements</div>
-        <div class="col-item" data-i="4">Prioritization</div>
-        <div class="col-item" data-i="5">Epic &amp; Story Creation</div>
-      </div>
-
-      <div class="wall" id="s1-wall">
-        <div class="token" id="s1-tok"></div>
-      </div>
-
-      <div class="col col-eng" id="s1-ceng">
-        <div class="col-head">Engineering</div>
-        <div class="col-item" data-i="0">Architecture</div>
-        <div class="col-item" data-i="1">Design</div>
-        <div class="col-item" data-i="2">Implementation</div>
-        <div class="col-item" data-i="3">Testing</div>
-        <div class="col-item" data-i="4">Deployment</div>
-        <div class="col-item" data-i="5">Operations</div>
-      </div>
+<!-- ════════════════════════════════════════════
+     HERO
+════════════════════════════════════════════ -->
+<section id="hero" class="route-bg on-cobalt">
+  <div class="inner">
+    <div class="hero-overline r">
+      <div class="hero-pill">Engineering &amp; Product Leadership</div>
     </div>
-
-    <div class="s1-caption" id="s1-cap">
-      "Product defines." &nbsp;&nbsp; "Engineering delivers."
+    <h1 class="r" data-d="1">The Builder.</h1>
+    <p class="lead r" data-d="2" style="margin-top:24px;">
+      This is not a story about product managers learning to code,<br>
+      or engineers learning product.<br><br>
+      This is a story about the emergence of a new kind of operator —<br>
+      one defined not by function, but by <strong style="color:var(--white);font-weight:700;">ownership</strong>.
+    </p>
+    <div class="scroll-cue r" data-d="4">
+      <span>Scroll to explore</span>
+      <div class="arrow-down"></div>
     </div>
   </div>
+</section>
 
-  <!-- ══════════════════════════════════════════
-       SCENE 2 — COST OF HANDOFFS
-  ══════════════════════════════════════════ -->
-  <div class="scene" id="s2">
-    <div class="eyebrow rise">The Cost of Handoffs</div>
+<!-- ════════════════════════════════════════════
+     OLD WORLD
+════════════════════════════════════════════ -->
+<section id="old-world" class="route-bg on-tan">
+  <div class="inner">
+    <p class="eyebrow eyebrow-cobalt r">Scene 1</p>
+    <h2 class="r" data-d="1">The Era of Specialization</h2>
+    <p class="lead r" data-d="2" style="margin-top:16px;margin-bottom:40px;color:rgba(10,8,59,0.6);">
+      Two disciplines. Two domains. A hard boundary between them.
+    </p>
 
-    <div class="s2-pipe">
-      <div class="pipe-pm">PM</div>
-      <div class="pipe-block" id="s2-block">
+    <div class="split-header r" data-d="2" id="s1-split">
+      <div class="split-col split-col-pm">
+        <div class="split-col-head"><div class="col-head-dot"></div>Product Management</div>
+        <div class="split-item r" data-d="2">User Research</div>
+        <div class="split-item r" data-d="3">Customer Discovery</div>
+        <div class="split-item r" data-d="3">Stakeholder Alignment</div>
+        <div class="split-item r" data-d="4">Requirements</div>
+        <div class="split-item r" data-d="4">Prioritization</div>
+        <div class="split-item r" data-d="5">Epic &amp; Story Creation</div>
+      </div>
+      <div class="split-wall"></div>
+      <div class="split-col split-col-eng">
+        <div class="split-col-head"><div class="col-head-dot"></div>Engineering</div>
+        <div class="split-item r" data-d="2">Architecture</div>
+        <div class="split-item r" data-d="3">Design</div>
+        <div class="split-item r" data-d="3">Implementation</div>
+        <div class="split-item r" data-d="4">Testing</div>
+        <div class="split-item r" data-d="4">Deployment</div>
+        <div class="split-item r" data-d="5">Operations</div>
+      </div>
+    </div>
+
+    <!-- handoff token rail -->
+    <div style="margin-top:28px;" class="r" data-d="5">
+      <div class="handoff-row" id="s1-handoff">
+        <div class="handoff-rail">
+          <div class="handoff-dot" id="s1-dot"></div>
+        </div>
+      </div>
+      <p class="handoff-label">Work passes over the wall via handoff</p>
+    </div>
+
+    <div class="old-world-caption r" data-d="6" style="margin-top:28px;">
+      <p>"Product defines." &nbsp;&nbsp;&nbsp; "Engineering delivers."</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════
+     COST OF HANDOFFS
+════════════════════════════════════════════ -->
+<section id="handoffs">
+  <div class="inner">
+    <p class="eyebrow eyebrow-navy r">Scene 2</p>
+    <h2 class="r" data-d="1">The Cost of Handoffs</h2>
+    <p class="lead r" data-d="2" style="margin-top:16px;margin-bottom:40px;color:rgba(10,8,59,0.6);">
+      Every boundary is a place where momentum goes to die.
+    </p>
+
+    <div class="pipeline-wrap r" data-d="2">
+      <div class="pipeline" id="s2-pipeline">
+        <div class="pipe-seg pipe-pm">Product</div>
+        <div class="pipe-seg pipe-gap" id="s2-gap">
+          <div class="pipe-gap-arrows">→ → →</div>
+          <div class="pipe-gap-label">Handoff</div>
+        </div>
+        <div class="pipe-seg pipe-eng">Engineering</div>
         <div class="s2-token" id="s2-tok"></div>
       </div>
-      <div class="pipe-eng">Engineering</div>
     </div>
 
-    <div class="chips" id="s2-chips">
-      <div class="chip" data-d="0">Waiting</div>
-      <div class="chip" data-d="150">Context Loss</div>
-      <div class="chip" data-d="300">Clarification Loops</div>
-      <div class="chip" data-d="450">Rework</div>
-      <div class="chip" data-d="600">Misalignment</div>
+    <div class="friction-grid r" data-d="3" style="margin-top:28px;" id="s2-frictions">
+      <div class="fchip" data-d="0">Waiting</div>
+      <div class="fchip" data-d="1">Context Loss</div>
+      <div class="fchip" data-d="2">Clarification Loops</div>
+      <div class="fchip" data-d="3">Rework</div>
+      <div class="fchip" data-d="4">Misalignment</div>
     </div>
 
-    <p class="caption rise" id="s2-cap" style="transition-delay:1.8s">"Every handoff introduces friction."</p>
-  </div>
-
-  <!-- ══════════════════════════════════════════
-       SCENE 3 — THE WALL DISSOLVES
-  ══════════════════════════════════════════ -->
-  <div class="scene" id="s3">
-    <div class="eyebrow rise">The Shift</div>
-
-    <div class="s3-stage" id="s3-stage">
-      <div class="s3-pm" id="s3-pm">Product</div>
-      <div class="s3-wall" id="s3-wall"></div>
-      <div class="s3-eng" id="s3-eng">Engineering</div>
-
-      <div class="forces force-l" id="s3-fl">
-        <div class="force-item">AI-assisted coding</div>
-        <div class="force-item">Lower build cost</div>
-        <div class="force-item">Better tooling</div>
+    <div class="handoffs-callout r" data-d="5" style="margin-top:44px;">
+      <div class="callout">
+        <div class="callout-label">Primary Impact</div>
+        <div class="callout-value">Slower Execution</div>
+        <div class="callout-sub">Weeks lost per initiative to handoff overhead</div>
       </div>
-      <div class="forces force-r" id="s3-fr">
-        <div class="force-item">LLM-powered prototyping</div>
-        <div class="force-item">No-code acceleration</div>
-        <div class="force-item">Fast feedback loops</div>
+      <div class="callout">
+        <div class="callout-label">Secondary Impact</div>
+        <div class="callout-value">Ownership Gaps</div>
+        <div class="callout-sub">No single person accountable for the outcome</div>
       </div>
     </div>
 
-    <p class="caption" id="s3-cap" style="opacity:0;transition:opacity 0.8s ease;max-width:560px;">
-      "The bottleneck shifts from <em>execution</em> to <em>ownership</em>."
+    <p class="caption-text r" data-d="6" style="margin-top:32px;text-align:center;color:rgba(10,8,59,0.4);">
+      "Every handoff introduces friction."
     </p>
   </div>
+</section>
 
-  <!-- ══════════════════════════════════════════
-       SCENE 4 — THE SPECTRUM
-  ══════════════════════════════════════════ -->
-  <div class="scene" id="s4">
-    <div class="eyebrow rise">The New Model</div>
+<!-- ════════════════════════════════════════════
+     THE SHIFT
+════════════════════════════════════════════ -->
+<section id="shift" class="route-bg on-navy">
+  <div class="inner">
+    <p class="eyebrow eyebrow-white r">Scene 3</p>
+    <h2 class="r" data-d="1" style="color:var(--white);">The Wall Starts to Disappear</h2>
 
-    <div class="s4-wrap">
-      <!-- Builder elevated above -->
-      <div class="s4-elevated" id="s4-el">
-        <div class="s4-elevated-badge">Builder</div>
-        <div class="s4-elevated-sub">End-to-end ownership</div>
-        <div class="s4-stem"></div>
+    <div class="forces-row" id="s3-forces" style="margin-top:40px;">
+      <div class="force-list">
+        <div class="force-item"><span class="force-arrow">→</span>AI-assisted coding</div>
+        <div class="force-item"><span class="force-arrow">→</span>Lower build cost</div>
+        <div class="force-item"><span class="force-arrow">→</span>Better tooling</div>
+      </div>
+      <div class="force-list" style="text-align:right;">
+        <div class="force-item right"><span class="force-arrow">←</span>LLM-powered prototyping</div>
+        <div class="force-item right"><span class="force-arrow">←</span>No-code acceleration</div>
+        <div class="force-item right"><span class="force-arrow">←</span>Fast feedback loops</div>
+      </div>
+    </div>
+
+    <div class="dissolve-stage" id="s3-stage" style="margin-top:32px;">
+      <div class="d-col d-col-pm" id="s3-pm">Product</div>
+      <div class="d-wall" id="s3-wall"></div>
+      <div class="d-col d-col-eng" id="s3-eng">Engineering</div>
+    </div>
+
+    <div class="shift-quote" id="s3-quote" style="margin-top:40px;">
+      The bottleneck shifts from <em>execution</em> to <em>ownership</em>.
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════
+     THE SPECTRUM
+════════════════════════════════════════════ -->
+<section id="spectrum">
+  <div class="inner">
+    <p class="eyebrow eyebrow-cobalt r">Scene 4</p>
+    <h2 class="r" data-d="1">The New Model</h2>
+    <p class="lead r" data-d="2" style="margin-top:16px;margin-bottom:40px;color:rgba(10,8,59,0.6);">
+      The spectrum still exists. But the Builder transcends it.
+    </p>
+
+    <div class="spectrum-stage r" data-d="3">
+      <!-- Elevated builder -->
+      <div class="builder-elevated" id="s4-elevated">
+        <div class="builder-elevated-badge">Builder</div>
+        <div class="builder-elevated-sub">End-to-end ownership</div>
+        <div class="builder-stem"></div>
       </div>
 
       <!-- Spectrum bar -->
-      <div class="spectrum-line" id="s4-line" style="margin:28px 0 64px;">
-        <span class="spec-end l">Product-Oriented</span>
-        <span class="spec-end r">Engineering-Oriented</span>
-
-        <!-- Personas -->
-        <div class="persona" style="left:8%" id="sp1">
-          <div class="pdot" style="background:rgba(96,165,250,0.55)"></div>
-          <span class="plabel">Senior PM</span>
-        </div>
-        <div class="persona" style="left:25%" id="sp2">
-          <div class="pdot" style="background:rgba(96,165,250,0.35)"></div>
-          <span class="plabel">Director Product</span>
-        </div>
-        <div class="persona" style="left:50%" id="sp3">
-          <div class="pdot builder-dot"></div>
-          <span class="plabel builder-label">↑ elevated</span>
-        </div>
-        <div class="persona" style="left:74%" id="sp4">
-          <div class="pdot" style="background:rgba(52,211,153,0.35)"></div>
-          <span class="plabel">Staff Engineer</span>
-        </div>
-        <div class="persona" style="left:91%" id="sp5">
-          <div class="pdot" style="background:rgba(52,211,153,0.55)"></div>
-          <span class="plabel">Principal Eng.</span>
+      <div class="spectrum-bar-wrap">
+        <span class="spec-label l">Product-Oriented</span>
+        <span class="spec-label r">Engineering-Oriented</span>
+        <div class="spectrum-bar" id="s4-bar">
+          <div class="persona" style="left:8%" id="sp1">
+            <div class="persona-dot" style="background:rgba(121,215,255,0.4);border-color:rgba(121,215,255,0.6)"></div>
+            <span class="persona-label">Senior PM</span>
+          </div>
+          <div class="persona" style="left:26%" id="sp2">
+            <div class="persona-dot" style="background:rgba(121,215,255,0.25);border-color:rgba(121,215,255,0.4)"></div>
+            <span class="persona-label">Director Product</span>
+          </div>
+          <div class="persona" style="left:50%" id="sp3">
+            <div class="persona-dot" style="background:rgba(23,92,255,0.2);border-color:rgba(23,92,255,0.3);width:13px;height:13px;"></div>
+            <span class="persona-label" style="color:rgba(23,92,255,0.35);font-style:italic;">↑ elevated</span>
+          </div>
+          <div class="persona" style="left:73%" id="sp4">
+            <div class="persona-dot" style="background:rgba(215,238,111,0.4);border-color:rgba(181,200,60,0.5)"></div>
+            <span class="persona-label">Staff Engineer</span>
+          </div>
+          <div class="persona" style="left:91%" id="sp5">
+            <div class="persona-dot" style="background:rgba(215,238,111,0.5);border-color:rgba(181,200,60,0.6)"></div>
+            <span class="persona-label">Principal Eng.</span>
+          </div>
         </div>
       </div>
+    </div>
 
-      <div class="s4-note" id="s4-note">
-        The Builder is not a midpoint compromise — it's a dimension above.
+    <div class="spectrum-insight r" data-d="5">
+      <div class="insight-card">
+        <p>The Builder is <strong>not a midpoint compromise</strong> between PM and Engineering. It is a dimension above — defined by full-cycle ownership, not function.</p>
       </div>
     </div>
   </div>
+</section>
 
-  <!-- ══════════════════════════════════════════
-       SCENE 5 — OWNERSHIP EXPANDS
-  ══════════════════════════════════════════ -->
-  <div class="scene" id="s5">
-    <div class="eyebrow rise">Ownership Expands</div>
+<!-- ════════════════════════════════════════════
+     LIFECYCLE
+════════════════════════════════════════════ -->
+<section id="lifecycle" class="route-bg on-tan">
+  <div class="inner">
+    <p class="eyebrow eyebrow-cobalt r">Scene 5</p>
+    <h2 class="r" data-d="1">Ownership Expands</h2>
+    <p class="lead r" data-d="2" style="margin-top:16px;margin-bottom:40px;color:rgba(10,8,59,0.6);">
+      Traditional roles own a slice. The Builder owns the outcome.
+    </p>
 
-    <div class="s5-wrap">
-      <div class="phase-track">
-        <div class="phase">Discovery</div>
-        <div class="phase">Research</div>
-        <div class="phase">Interviews</div>
-        <div class="phase">Vision</div>
-        <div class="phase">Planning</div>
-        <div class="phase">Architecture</div>
-        <div class="phase">Build</div>
-        <div class="phase">Launch</div>
-        <div class="phase">Iterate</div>
-      </div>
+    <div class="phase-track r" data-d="2" style="margin-bottom:28px;">
+      <div class="phase">Discovery</div>
+      <div class="phase">Research</div>
+      <div class="phase">Interviews</div>
+      <div class="phase">Vision</div>
+      <div class="phase">Planning</div>
+      <div class="phase">Architecture</div>
+      <div class="phase">Build</div>
+      <div class="phase">Launch</div>
+      <div class="phase">Iterate</div>
+    </div>
 
-      <div class="own-rows">
-        <div class="own-row" id="s5-r1">
-          <div class="own-label" style="color:rgba(96,165,250,0.6)">Trad. PM</div>
-          <div class="own-bar">
-            <div class="own-fill" id="s5-f1"
-              style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.18);color:rgba(96,165,250,0.7)">
-            </div>
-          </div>
-        </div>
-
-        <div class="own-row" id="s5-r2">
-          <div class="own-label" style="color:rgba(52,211,153,0.6)">Trad. Eng</div>
-          <div class="own-bar">
-            <div class="own-fill right-align" id="s5-f2"
-              style="background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.18);color:rgba(52,211,153,0.7);left:auto;right:0">
-            </div>
-          </div>
-        </div>
-
-        <div class="own-row" id="s5-r3">
-          <div class="own-label" style="color:rgba(167,139,250,0.9);font-size:11px;">Builder</div>
-          <div class="own-bar">
-            <div class="own-fill" id="s5-f3"
-              style="background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.3);color:rgba(167,139,250,0.9);transition-duration:1.8s">
-            </div>
-          </div>
+    <div class="own-section" id="s5-own">
+      <div class="own-row" id="s5-r1">
+        <div class="own-row-label" style="color:#1A5AA8;">Trad. PM</div>
+        <div class="own-bar-track">
+          <div class="own-bar-fill from-left fill-pm" id="s5-f1"></div>
         </div>
       </div>
+      <div class="own-row" id="s5-r2">
+        <div class="own-row-label" style="color:#4A5E00;">Trad. Eng</div>
+        <div class="own-bar-track">
+          <div class="own-bar-fill from-right fill-eng" id="s5-f2"></div>
+        </div>
+      </div>
+      <div class="own-row" id="s5-r3">
+        <div class="own-row-label" style="color:var(--cobalt);font-family:'Saira',sans-serif;font-weight:800;font-size:12px;">Builder</div>
+        <div class="own-bar-track">
+          <div class="own-bar-fill from-left fill-builder" id="s5-f3">Full lifecycle ownership</div>
+        </div>
+      </div>
+    </div>
 
-      <div class="s5-caption" id="s5-cap">
-        The Builder owns outcomes, not phases.
+    <div class="lifecycle-callouts r" data-d="6" style="margin-top:36px;">
+      <div class="callout">
+        <div class="callout-label">Builder owns</div>
+        <div class="callout-value">Discovery → Launch</div>
+        <div class="callout-sub">And everything in between</div>
+      </div>
+      <div class="callout">
+        <div class="callout-label">Key distinction</div>
+        <div class="callout-value">Outcomes, Not Phases</div>
+        <div class="callout-sub">Accountable for the result, not a handoff</div>
       </div>
     </div>
   </div>
+</section>
 
-  <!-- ══════════════════════════════════════════
-       SCENE 6 — TWO PATHS
-  ══════════════════════════════════════════ -->
-  <div class="scene" id="s6">
-    <div class="eyebrow rise">Two Paths. One Destination.</div>
+<!-- ════════════════════════════════════════════
+     TWO PATHS
+════════════════════════════════════════════ -->
+<section id="paths">
+  <div class="inner" style="align-items:center;display:flex;flex-direction:column;">
+    <p class="eyebrow eyebrow-navy r" style="text-align:center;">Scene 6</p>
+    <h2 class="r" data-d="1" style="text-align:center;">Two Paths. One Destination.</h2>
+    <p class="lead r" data-d="2" style="margin-top:16px;margin-bottom:44px;color:rgba(10,8,59,0.6);text-align:center;">
+      Builders emerge from either discipline.
+    </p>
 
-    <div style="position:relative;width:min(460px,90vw);">
-      <div class="s6-paths">
-        <!-- PM path -->
-        <div class="s6-path">
-          <div class="pnode pnode-pm" id="s6-pm1">
-            <div class="pnode-title">PM</div>
-            <div class="pnode-sub">Product intuition</div>
-          </div>
-          <div class="parrow parrow-pm" id="s6-pa1"></div>
-          <div class="pnode pnode-pm" id="s6-pm2">
-            <div class="pnode-title">Senior PM</div>
-            <div class="pnode-sub">Strategy + vision</div>
-          </div>
-          <div class="parrow parrow-pm" id="s6-pa2"></div>
-          <div class="pnode pnode-pm pnode-dim" id="s6-pm3">
-            <div class="pnode-title">+ Technical depth</div>
-            <div class="pnode-sub">Learns to build</div>
-          </div>
+    <div class="paths-grid" style="max-width:620px;width:100%;">
+      <div class="path-col">
+        <div class="pn pn-pm" id="p-pm1">
+          <div class="pn-title">PM</div>
+          <div class="pn-sub">Product intuition</div>
         </div>
-
-        <!-- Eng path -->
-        <div class="s6-path">
-          <div class="pnode pnode-eng" id="s6-e1">
-            <div class="pnode-title">Engineer</div>
-            <div class="pnode-sub">Technical foundation</div>
-          </div>
-          <div class="parrow parrow-eng" id="s6-ea1"></div>
-          <div class="pnode pnode-eng" id="s6-e2">
-            <div class="pnode-title">Staff Engineer</div>
-            <div class="pnode-sub">Systems thinking</div>
-          </div>
-          <div class="parrow parrow-eng" id="s6-ea2"></div>
-          <div class="pnode pnode-eng pnode-dim" id="s6-e3">
-            <div class="pnode-title">+ Product depth</div>
-            <div class="pnode-sub">Learns to discover</div>
-          </div>
+        <div class="path-arrow-v arrow-pm" id="p-pa1"></div>
+        <div class="pn pn-pm" id="p-pm2">
+          <div class="pn-title">Senior PM</div>
+          <div class="pn-sub">Strategy + vision</div>
+        </div>
+        <div class="path-arrow-v arrow-pm" id="p-pa2"></div>
+        <div class="pn pn-pm pn-dim" id="p-pm3">
+          <div class="pn-title">+ Technical depth</div>
+          <div class="pn-sub">Learns to build</div>
         </div>
       </div>
 
-      <!-- Convergence -->
-      <div class="s6-merge" id="s6-merge">
-        <div class="merge-lines">
-          <svg width="360" height="36" style="overflow:visible">
-            <line x1="90" y1="0" x2="180" y2="36" stroke="rgba(167,139,250,0.25)" stroke-width="1"/>
-            <line x1="270" y1="0" x2="180" y2="36" stroke="rgba(167,139,250,0.25)" stroke-width="1"/>
-          </svg>
+      <div class="path-center" style="display:flex;align-items:center;justify-content:center;">
+        <!-- visual spacer -->
+      </div>
+
+      <div class="path-col">
+        <div class="pn pn-eng" id="p-e1">
+          <div class="pn-title">Engineer</div>
+          <div class="pn-sub">Technical foundation</div>
         </div>
-        <div class="s6-builder-badge">
-          <div class="s6-builder-badge-title">Builder</div>
-          <div class="s6-builder-badge-sub">End-to-end ownership</div>
+        <div class="path-arrow-v arrow-eng" id="p-ea1"></div>
+        <div class="pn pn-eng" id="p-e2">
+          <div class="pn-title">Staff Engineer</div>
+          <div class="pn-sub">Systems thinking</div>
+        </div>
+        <div class="path-arrow-v arrow-eng" id="p-ea2"></div>
+        <div class="pn pn-eng pn-dim" id="p-e3">
+          <div class="pn-title">+ Product depth</div>
+          <div class="pn-sub">Learns to discover</div>
         </div>
       </div>
     </div>
 
-    <p class="caption" id="s6-cap" style="opacity:0;transition:opacity 0.7s ease;margin-top:20px;">
+    <div class="convergence" id="s6-conv" style="max-width:620px;width:100%;">
+      <div class="conv-lines">
+        <svg width="620" height="40" viewBox="0 0 620 40" style="overflow:visible;">
+          <line x1="155" y1="0" x2="310" y2="40" stroke="rgba(23,92,255,0.2)" stroke-width="1.5"/>
+          <line x1="465" y1="0" x2="310" y2="40" stroke="rgba(23,92,255,0.2)" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="builder-node">
+        <div class="builder-node-title">Builder</div>
+        <div class="builder-node-sub">End-to-end ownership of outcomes</div>
+      </div>
+    </div>
+
+    <p class="paths-caption" id="s6-cap">
       "Builders emerge from either discipline."
     </p>
   </div>
+</section>
 
-  <!-- ══════════════════════════════════════════
-       SCENE 7 — THE FUTURE
-  ══════════════════════════════════════════ -->
-  <div class="scene" id="s7">
-    <div class="eyebrow rise" style="margin-bottom:28px;">The Future of Ownership</div>
+<!-- ════════════════════════════════════════════
+     THE FUTURE
+════════════════════════════════════════════ -->
+<section id="future" class="route-bg on-cobalt">
+  <div class="inner">
+    <p class="eyebrow eyebrow-white r" style="text-align:center;">The Future</p>
 
-    <div class="s7-wrap">
-      <p class="s7-body rise" style="transition-delay:0.2s">
-        The highest leverage individuals are those who can
-        <em>identify a problem</em>, <em>validate it</em>,
-        <em>design a solution</em>, <em>build momentum</em>,
-        <em>deliver the outcome</em>, and <em>own the result</em>.
-      </p>
+    <p class="final-statement r" data-d="1">
+      The highest leverage individuals identify a problem, validate it, design the solution, build it, ship it, and own the result.
+    </p>
 
-      <p class="s7-body rise" style="font-size:clamp(14px,1.8vw,18px);transition-delay:0.6s;margin-top:4px">
-        We call these people <strong>Builders</strong>.
-      </p>
+    <p class="lead r" data-d="2" style="margin-top:8px;">
+      We call these people <em><strong>Builders</strong></em>. Organizations will increasingly optimize for ownership over specialization.
+    </p>
 
-      <!-- Hierarchy diagram: Builder above PM & Eng -->
-      <div class="s7-diagram rise" id="s7-diag" style="transition-delay:1.1s">
-        <div style="text-align:center">
-          <div class="s7-builder-top">Builder</div>
-          <div class="s7-builder-label">Owns the full lifecycle</div>
-        </div>
-
-        <svg class="s7-tree-lines" width="260" height="36" viewBox="0 0 260 36">
-          <line x1="130" y1="0" x2="60"  y2="36" stroke="rgba(167,139,250,0.2)" stroke-width="1"/>
-          <line x1="130" y1="0" x2="200" y2="36" stroke="rgba(167,139,250,0.2)" stroke-width="1"/>
-        </svg>
-
-        <div class="s7-peers">
-          <div class="s7-peer s7-peer-pm">Product</div>
-          <div class="s7-peer s7-peer-eng">Engineering</div>
-        </div>
+    <!-- Hierarchy -->
+    <div class="hierarchy r" id="s7-hier" data-d="3" style="margin-top:12px;">
+      <div class="hier-builder">
+        <div class="hier-builder-title">Builder</div>
+        <div class="hier-builder-label">Owns the full lifecycle</div>
       </div>
-
-      <p class="s7-tagline rise" id="s7-tag" style="transition-delay:1.6s">
-        Ownership across the entire lifecycle.
-      </p>
+      <div class="hier-tree">
+        <svg width="320" height="44" viewBox="0 0 320 44">
+          <line x1="160" y1="0" x2="80"  y2="44" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
+          <line x1="160" y1="0" x2="240" y2="44" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="hier-peers">
+        <div class="hier-peer hier-peer-pm">Product</div>
+        <div class="hier-peer hier-peer-eng">Engineering</div>
+      </div>
     </div>
-  </div>
 
-</div><!-- /deck -->
+    <p class="final-tagline r" data-d="4">
+      Ownership across the entire lifecycle.
+    </p>
+  </div>
+</section>
 
 <script>
-// ── Engine ──────────────────────────────────────────────
-const N = 7;
-let cur = 1, timer = null;
+// ── Intersection Observer: scroll reveal ──────
+const revealObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('on');
+      revealObs.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.15 });
 
-const DURATIONS = { 1:10000, 2:8500, 3:9000, 4:9000, 5:11000, 6:9500, 7:0 };
+document.querySelectorAll('.r').forEach(el => revealObs.observe(el));
 
-// Build nav
-const nav = document.getElementById('nav');
-for (let i=1;i<=N;i++){
-  const d = document.createElement('div');
-  d.className='dot'+(i===1?' on':'');
-  d.onclick=()=>go(i);
-  nav.appendChild(d);
-}
+// ── Section observer: nav dots + section-specific triggers ──
+const sections = ['hero','old-world','handoffs','shift','spectrum','lifecycle','paths','future'];
+const navDots = document.querySelectorAll('.snav-dot');
+const sitenav = document.getElementById('sitenav');
+const lightSections = new Set(['hero','shift','future']);
 
-document.addEventListener('click', e=>{ if(!e.target.closest('.nav') && cur<N) go(cur+1); });
-document.addEventListener('keydown', e=>{
-  if(['ArrowRight',' ','Enter'].includes(e.key) && cur<N) go(cur+1);
-  if(e.key==='ArrowLeft' && cur>1) go(cur-1);
+const secObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      navDots.forEach((d,i) => d.classList.toggle('active', sections[i] === id));
+      sitenav.classList.toggle('light', lightSections.has(id));
+      handleSectionEnter(id);
+    }
+  });
+}, { threshold: 0.4 });
+
+sections.forEach(id => {
+  const el = document.getElementById(id);
+  if(el) secObs.observe(el);
 });
 
-function go(n){
-  if(n<1||n>N) return;
-  clearTimeout(timer);
-  document.getElementById('s'+cur).classList.remove('active');
-  cur=n;
-  document.getElementById('pbar').style.width=(n/N*100)+'%';
-  document.getElementById('counter').textContent=n+' / '+N;
-  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('on',i===n-1));
-  document.getElementById('s'+n).classList.add('active');
-  resetScene(n);
-  setTimeout(()=>play(n), 60);
-  if(DURATIONS[n]) timer=setTimeout(()=>{ if(cur===n) go(n+1); }, DURATIONS[n]);
-}
-
-// ── Helpers ─────────────────────────────────────────────
-function show(id, delay=0){
-  setTimeout(()=>{ const el=document.getElementById(id); if(el) el.classList.add('in'); }, delay);
-}
-function showEl(el, delay=0){
-  setTimeout(()=>{ if(el) el.classList.add('in'); }, delay);
-}
-function hide(id){ const el=document.getElementById(id); if(el) el.classList.remove('in'); }
-function css(id, prop, val){ const el=document.getElementById(id); if(el) el.style[prop]=val; }
-
-// ── Reset ────────────────────────────────────────────────
-function resetScene(n){
-  const s=document.getElementById('s'+n);
-  // Remove all .in classes
-  s.querySelectorAll('.in').forEach(el=>el.classList.remove('in'));
-  // Scene-specific resets
-  if(n===1){
-    css('s1-tok','left','-230px');
-    css('s1-cap','opacity','0');
-    s.querySelectorAll('.col-item').forEach(el=>el.classList.remove('in'));
-  }
-  if(n===2){
-    css('s2-tok','left','-10px');
-    css('s2-tok','opacity','1');
-    css('s2-tok','transition','left 1s cubic-bezier(0.16,1,0.3,1)');
-    document.getElementById('s2-block').classList.remove('hot');
-    s.querySelectorAll('.chip').forEach(el=>el.classList.remove('in'));
-    css('s2-cap','opacity','0');
-  }
-  if(n===3){
-    css('s3-pm','left','0');
-    css('s3-eng','right','0');
-    css('s3-wall','opacity','1');
-    css('s3-wall','width','3px');
-    css('s3-cap','opacity','0');
-    const fl=document.getElementById('s3-fl'), fr=document.getElementById('s3-fr');
-    if(fl) fl.classList.remove('in');
-    if(fr) fr.classList.remove('in');
-  }
-  if(n===4){
-    css('s4-line','opacity','0');
-    css('s4-line','transition','opacity 0.7s ease');
-    ['sp1','sp2','sp3','sp4','sp5'].forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.remove('in'); });
-    const el=document.getElementById('s4-el'); if(el) el.classList.remove('in');
-    css('s4-note','opacity','0');
-  }
-  if(n===5){
-    css('s5-f1','width','0%');
-    css('s5-f2','width','0%');
-    css('s5-f3','width','0%');
-    css('s5-cap','opacity','0');
-  }
-  if(n===6){
-    ['s6-pm1','s6-pa1','s6-pm2','s6-pa2','s6-pm3',
-     's6-e1','s6-ea1','s6-e2','s6-ea2','s6-e3'].forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.remove('in'); });
-    const m=document.getElementById('s6-merge'); if(m) m.classList.remove('in');
-    css('s6-cap','opacity','0');
-  }
-  if(n===7){
-    const d=document.getElementById('s7-diag'); if(d) d.classList.remove('in');
-  }
-}
-
-// ── Scene Animations ─────────────────────────────────────
-function play(n){
-  const s=document.getElementById('s'+n);
-  // Rise elements (eyebrow etc)
-  s.querySelectorAll('.rise').forEach((el,i)=>{
-    setTimeout(()=>el.classList.add('in'), 150+i*80);
+navDots.forEach((d,i) => {
+  d.addEventListener('click', () => {
+    document.getElementById(sections[i])?.scrollIntoView({behavior:'smooth'});
   });
-  const fn = [null,p1,p2,p3,p4,p5,p6,p7][n];
-  if(fn) fn();
+});
+
+// ── Section-specific animations ──────────────
+const triggered = new Set();
+
+function handleSectionEnter(id) {
+  if (triggered.has(id)) return;
+  triggered.add(id);
+
+  if (id === 'old-world') triggerOldWorld();
+  if (id === 'handoffs')  triggerHandoffs();
+  if (id === 'shift')     triggerShift();
+  if (id === 'spectrum')  triggerSpectrum();
+  if (id === 'lifecycle') triggerLifecycle();
+  if (id === 'paths')     triggerPaths();
 }
 
-function p1(){
-  // items stagger in
-  document.querySelectorAll('#s1 .col-pm .col-item').forEach((el,i)=>{
-    setTimeout(()=>el.classList.add('in'), 500+i*100);
-  });
-  document.querySelectorAll('#s1 .col-eng .col-item').forEach((el,i)=>{
-    setTimeout(()=>el.classList.add('in'), 500+i*100);
-  });
-  // token slides across
-  setTimeout(()=>{
-    const tok=document.getElementById('s1-tok');
-    if(tok){ tok.style.transition='left 2.4s cubic-bezier(0.16,1,0.3,1)'; tok.style.left='230px'; }
-  }, 4200);
-  // caption
-  setTimeout(()=>{ css('s1-cap','opacity','1'); }, 6200);
+// ── Old World: handoff token ─────────────────
+function triggerOldWorld() {
+  setTimeout(() => {
+    const dot = document.getElementById('s1-dot');
+    if (dot) dot.classList.add('slide');
+  }, 1200);
 }
 
-function p2(){
+// ── Handoffs: stalled token + chips ──────────
+function triggerHandoffs() {
   const tok = document.getElementById('s2-tok');
-  const block = document.getElementById('s2-block');
-  // token moves to boundary
-  setTimeout(()=>{
-    if(tok){ tok.style.transition='left 1s cubic-bezier(0.16,1,0.3,1)'; tok.style.left='215px'; }
-  }, 300);
-  // boundary heats up
-  setTimeout(()=>{ if(block) block.classList.add('hot'); }, 900);
-  // token stalls
-  setTimeout(()=>{
-    if(tok){
-      tok.style.transition='left 5s cubic-bezier(0.95,0,1,1), opacity 2.5s ease';
-      tok.style.left='224px';
-      tok.style.opacity='0.15';
-    }
-  }, 1100);
-  // friction chips
-  document.querySelectorAll('#s2-chips .chip').forEach(el=>{
-    setTimeout(()=>el.classList.add('in'), 1400+parseInt(el.dataset.d));
-  });
-  // caption
-  setTimeout(()=>document.getElementById('s2-cap').classList.add('in'), 2600);
-}
+  const gap = document.getElementById('s2-gap');
 
-function p3(){
-  // forces appear
-  setTimeout(()=>{
-    document.getElementById('s3-fl').classList.add('in');
-    document.getElementById('s3-fr').classList.add('in');
-  }, 600);
-  // wall trembles then fades
-  setTimeout(()=>{
-    const w=document.getElementById('s3-wall');
-    if(w){ w.style.transition='all 0.15s ease'; w.style.transform='translateX(-50%) scaleX(1.5)'; }
-  }, 1800);
-  setTimeout(()=>{
-    const w=document.getElementById('s3-wall');
-    if(w){ w.style.transform='translateX(-50%) scaleX(0.5)'; }
-  }, 1950);
-  setTimeout(()=>{
-    const w=document.getElementById('s3-wall');
-    if(w){ w.style.transition='all 1.6s var(--ease)'; w.style.opacity='0'; w.style.width='0px'; }
-  }, 2200);
-  // columns overlap
-  setTimeout(()=>{
-    const pm=document.getElementById('s3-pm'), en=document.getElementById('s3-eng');
-    if(pm){ pm.style.transition='all 1.6s cubic-bezier(0.16,1,0.3,1)'; pm.style.left='90px'; pm.style.opacity='0.65'; }
-    if(en){ en.style.transition='all 1.6s cubic-bezier(0.16,1,0.3,1)'; en.style.right='90px'; en.style.opacity='0.65'; }
-  }, 2300);
-  // caption
-  setTimeout(()=>{ css('s3-cap','opacity','1'); }, 4200);
-}
-
-function p4(){
-  // spectrum bar
-  setTimeout(()=>{ document.getElementById('s4-line').classList.add('in'); }, 400);
-  // persona dots stagger
-  ['sp1','sp2','sp3','sp4','sp5'].forEach((id,i)=>{
-    setTimeout(()=>{ const el=document.getElementById(id); if(el) el.classList.add('in'); }, 900+i*220);
-  });
-  // builder elevated
-  setTimeout(()=>{ document.getElementById('s4-el').classList.add('in'); }, 2600);
-  // note
-  setTimeout(()=>{ document.getElementById('s4-note').classList.add('in'); }, 3500);
-}
-
-function p5(){
-  // PM row
-  setTimeout(()=>{
-    document.getElementById('s5-r1').classList.add('in');
-    setTimeout(()=>{ css('s5-f1','width','45%'); }, 350);
+  setTimeout(() => {
+    if (tok) { tok.style.transition = 'left 1s cubic-bezier(0.16,1,0.3,1)'; tok.style.left = 'calc(50% - 70px)'; }
   }, 400);
-  // Eng row
-  setTimeout(()=>{
-    document.getElementById('s5-r2').classList.add('in');
-    setTimeout(()=>{
-      const f=document.getElementById('s5-f2');
-      if(f){ f.style.width='45%'; f.style.left='auto'; f.style.right='0'; }
-    }, 350);
-  }, 1300);
-  // Builder row — full width, slower
-  setTimeout(()=>{
-    document.getElementById('s5-r3').classList.add('in');
-    setTimeout(()=>{ css('s5-f3','width','100%'); }, 300);
-  }, 2600);
-  // caption
-  setTimeout(()=>{ document.getElementById('s5-cap').classList.add('in'); }, 5000);
-}
+  setTimeout(() => {
+    if (gap) gap.classList.add('hot');
+  }, 1000);
+  setTimeout(() => {
+    if (tok) {
+      tok.style.transition = 'left 5s cubic-bezier(0.92,0,1,1), opacity 2s ease';
+      tok.style.left = 'calc(50% - 14px)';
+      tok.style.opacity = '0.15';
+    }
+  }, 1200);
 
-function p6(){
-  const seq = [
-    ['s6-pm1',300], ['s6-pa1',600], ['s6-pm2',900], ['s6-pa2',1200], ['s6-pm3',1500],
-    ['s6-e1',350],  ['s6-ea1',650], ['s6-e2',950],  ['s6-ea2',1250], ['s6-e3',1550],
-  ];
-  seq.forEach(([id,d])=>{
-    setTimeout(()=>{ const el=document.getElementById(id); if(el) el.classList.add('in'); }, d);
+  const chips = document.querySelectorAll('#s2-frictions .fchip');
+  chips.forEach((ch, i) => {
+    setTimeout(() => ch.classList.add('on'), 1600 + i * 180);
   });
-  setTimeout(()=>{ document.getElementById('s6-merge').classList.add('in'); }, 2600);
-  setTimeout(()=>{ css('s6-cap','opacity','1'); }, 3600);
 }
 
-function p7(){
-  setTimeout(()=>{ document.getElementById('s7-diag').classList.add('in'); }, 1400);
+// ── Shift: forces → wall dissolves ───────────
+function triggerShift() {
+  const forces = document.getElementById('s3-forces');
+  const wall   = document.getElementById('s3-wall');
+  const pm     = document.getElementById('s3-pm');
+  const eng    = document.getElementById('s3-eng');
+  const quote  = document.getElementById('s3-quote');
+
+  setTimeout(() => { if(forces) forces.classList.add('on'); }, 400);
+
+  // tremor
+  setTimeout(() => {
+    if(wall) { wall.style.transition = 'all 0.12s ease'; wall.style.transform = 'translateX(-50%) scaleX(2)'; }
+  }, 1800);
+  setTimeout(() => {
+    if(wall) wall.style.transform = 'translateX(-50%) scaleX(0.3)';
+  }, 1920);
+  setTimeout(() => {
+    if(wall) { wall.style.transition = 'all 0.12s ease'; wall.style.transform = 'translateX(-50%) scaleX(1.5)'; }
+  }, 2040);
+
+  // dissolve
+  setTimeout(() => {
+    if(wall) { wall.style.transition = 'all 1.8s ease'; wall.classList.add('gone'); }
+    if(pm)   { pm.style.transition  = 'all 1.8s cubic-bezier(0.16,1,0.3,1)'; pm.classList.add('merge'); }
+    if(eng)  { eng.style.transition = 'all 1.8s cubic-bezier(0.16,1,0.3,1)'; eng.classList.add('merge'); }
+  }, 2300);
+
+  setTimeout(() => { if(quote) quote.classList.add('on'); }, 4200);
 }
 
-// Start
-setTimeout(()=>play(1), 100);
-if(DURATIONS[1]) timer=setTimeout(()=>{ if(cur===1) go(2); }, DURATIONS[1]);
+// ── Spectrum: bar + personas + builder ───────
+function triggerSpectrum() {
+  const bar = document.getElementById('s4-bar');
+  setTimeout(() => { if(bar) bar.classList.add('on'); }, 400);
+
+  ['sp1','sp2','sp3','sp4','sp5'].forEach((id,i) => {
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if(el) el.classList.add('on');
+    }, 900 + i * 220);
+  });
+
+  setTimeout(() => {
+    const el = document.getElementById('s4-elevated');
+    if(el) el.classList.add('on');
+  }, 2600);
+}
+
+// ── Lifecycle: ownership bars ─────────────────
+function triggerLifecycle() {
+  setTimeout(() => {
+    const r1 = document.getElementById('s5-r1');
+    if(r1) r1.classList.add('on');
+    setTimeout(() => { document.getElementById('s5-f1').style.width = '44%'; }, 350);
+  }, 400);
+
+  setTimeout(() => {
+    const r2 = document.getElementById('s5-r2');
+    if(r2) r2.classList.add('on');
+    setTimeout(() => { document.getElementById('s5-f2').style.width = '44%'; }, 350);
+  }, 1300);
+
+  setTimeout(() => {
+    const r3 = document.getElementById('s5-r3');
+    if(r3) r3.classList.add('on');
+    setTimeout(() => { document.getElementById('s5-f3').style.width = '100%'; }, 300);
+  }, 2600);
+}
+
+// ── Paths: nodes + convergence ────────────────
+function triggerPaths() {
+  const seq = [
+    ['p-pm1',300], ['p-pa1',600], ['p-pm2',900], ['p-pa2',1200], ['p-pm3',1500],
+    ['p-e1', 350], ['p-ea1',650], ['p-e2', 950], ['p-ea2',1250], ['p-e3', 1550],
+  ];
+  seq.forEach(([id, delay]) => {
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if(el) el.classList.add('on');
+    }, delay);
+  });
+  setTimeout(() => {
+    const conv = document.getElementById('s6-conv');
+    if(conv) conv.classList.add('on');
+  }, 2600);
+  setTimeout(() => {
+    const cap = document.getElementById('s6-cap');
+    if(cap) cap.classList.add('on');
+  }, 3400);
+}
 </script>
 </body>
 </html>
