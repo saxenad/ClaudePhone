@@ -21,7 +21,7 @@ let W = canvas.width = window.innerWidth;
 let H = canvas.height = window.innerHeight;
 window.addEventListener('resize', () => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; init(); });
 
-const SS = () => Math.min(W,H)*0.135; // shark size
+const SS = () => Math.min(W,H)*0.135;
 
 const FISH_PAL = [
   ['#FF4D8B','#FFB3CF','#C80050'],['#FFD740','#FFF9C4','#F9A825'],
@@ -37,15 +37,19 @@ const NUMS = ['zero','one','two','three','four','five','six','seven','eight','ni
 const nw = n => (n>=0&&n<=20) ? NUMS[n] : String(n);
 
 // ── Speech ────────────────────────────────────────────────────────────────────
-let speechUnlocked = false;
+// iOS Safari blocks speechSynthesis.speak() called from rAF/setTimeout.
+// Solution: queue text and deliver it from the next touch/mouse event handler.
+let speechUnlocked = false, speechPending = null;
 function unlockSpeech() {
   if (speechUnlocked || !('speechSynthesis' in window)) return;
   speechUnlocked = true;
   const u = new SpeechSynthesisUtterance(' '); u.volume=0;
   window.speechSynthesis.speak(u);
 }
-function speak(txt) {
-  if (!('speechSynthesis' in window)) return;
+function speak(txt) { speechPending = txt; }
+function deliverSpeech() {
+  if (!speechPending || !speechUnlocked || !('speechSynthesis' in window)) return;
+  const txt = speechPending; speechPending = null;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(txt);
   u.lang='en-US'; u.rate=0.82; u.pitch=1.4; u.volume=1;
@@ -168,27 +172,18 @@ function drawHuman(h){
   const wb=Math.sin(t*2+ph)*s*0.06,kick=Math.sin(t*4+kph)*0.22,arm=Math.sin(t*3+ph)*0.35,lw=s*0.12;
   ctx.save();ctx.translate(x,y+wb);ctx.scale(-1,1);
 
-  // torso
   ctx.beginPath();ctx.ellipse(0,s*0.1,s*0.22,s*0.33,0,0,Math.PI*2);ctx.fillStyle='#FF6B00';ctx.fill();
-  // head
   ctx.beginPath();ctx.arc(0,-s*0.22,s*0.2,0,Math.PI*2);ctx.fillStyle='#FFCC99';ctx.fill();
-  // diving mask
   ctx.beginPath();ctx.ellipse(0,-s*0.22,s*0.17,s*0.12,0,0,Math.PI*2);ctx.fillStyle='rgba(80,200,255,0.5)';ctx.fill();ctx.strokeStyle='#222';ctx.lineWidth=s*0.035;ctx.stroke();
-  // eyes
   ctx.beginPath();ctx.arc(-s*0.06,-s*0.24,s*0.038,0,Math.PI*2);ctx.fillStyle='#111';ctx.fill();
   ctx.beginPath();ctx.arc(s*0.06,-s*0.24,s*0.038,0,Math.PI*2);ctx.fillStyle='#111';ctx.fill();
-  // snorkel
   ctx.beginPath();ctx.moveTo(s*0.16,-s*0.3);ctx.lineTo(s*0.22,-s*0.52);ctx.strokeStyle='#FF6B00';ctx.lineWidth=s*0.055;ctx.lineCap='round';ctx.stroke();
-  // arms
   ctx.save();ctx.rotate(arm);ctx.beginPath();ctx.moveTo(-s*0.2,0);ctx.lineTo(-s*0.46,s*0.28);ctx.strokeStyle='#FF6B00';ctx.lineWidth=lw;ctx.lineCap='round';ctx.stroke();ctx.restore();
   ctx.save();ctx.rotate(-arm);ctx.beginPath();ctx.moveTo(s*0.2,0);ctx.lineTo(s*0.46,s*0.28);ctx.strokeStyle='#FF6B00';ctx.lineWidth=lw;ctx.lineCap='round';ctx.stroke();ctx.restore();
-  // left leg+flipper
   ctx.save();ctx.rotate(kick);ctx.beginPath();ctx.moveTo(-s*0.1,s*0.42);ctx.lineTo(-s*0.13,s*0.7);ctx.strokeStyle='#FF6B00';ctx.lineWidth=lw;ctx.lineCap='round';ctx.stroke();
   ctx.beginPath();ctx.ellipse(-s*0.19,s*0.73,s*0.19,s*0.065,-0.2,0,Math.PI*2);ctx.fillStyle='#00AA44';ctx.fill();ctx.restore();
-  // right leg+flipper
   ctx.save();ctx.rotate(-kick);ctx.beginPath();ctx.moveTo(s*0.1,s*0.42);ctx.lineTo(s*0.13,s*0.7);ctx.strokeStyle='#FF6B00';ctx.lineWidth=lw;ctx.lineCap='round';ctx.stroke();
   ctx.beginPath();ctx.ellipse(s*0.19,s*0.73,s*0.19,s*0.065,0.2,0,Math.PI*2);ctx.fillStyle='#00AA44';ctx.fill();ctx.restore();
-  // warning sign above head
   ctx.save();ctx.translate(0,-s*0.58);
   ctx.beginPath();ctx.arc(0,0,s*0.18,0,Math.PI*2);ctx.fillStyle='#FF1744';ctx.fill();
   ctx.font=`900 ${s*0.24}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='white';ctx.fillText('!',0,0);
@@ -203,26 +198,17 @@ function drawShark(){
   const ta=Math.atan2(sharkVY,Math.max(0.1,Math.abs(sharkVX)))*0.45;
   sharkAngle+=(ta-sharkAngle)*0.08;
   ctx.save();ctx.translate(sharkX,sharkY);ctx.rotate(sharkAngle);
-  // tail
   ctx.save();ctx.translate(-s*1.05,0);ctx.rotate(wag);
   ctx.beginPath();ctx.moveTo(0,-s*0.06);ctx.lineTo(-s*0.92,-s*0.75);ctx.lineTo(s*0.07,-s*0.14);ctx.closePath();ctx.fillStyle='#455A64';ctx.fill();
   ctx.beginPath();ctx.moveTo(0,s*0.06);ctx.lineTo(-s*0.6,s*0.48);ctx.lineTo(s*0.07,s*0.14);ctx.closePath();ctx.fillStyle='#546E7A';ctx.fill();ctx.restore();
-  // body
   ctx.beginPath();ctx.moveTo(-s,0);ctx.bezierCurveTo(-s*0.45,-s*0.46,s*0.78,-s*0.44,s*1.52,-s*0.06);ctx.bezierCurveTo(s*1.64,0.02*s,s*1.64,s*0.18,s*1.52,s*0.23);ctx.bezierCurveTo(s*0.78,s*0.44,-s*0.45,s*0.44,-s,0);ctx.closePath();ctx.fillStyle='#78909C';ctx.fill();
   ctx.beginPath();ctx.ellipse(s*0.22,s*0.19,s*0.84,s*0.24,0,0,Math.PI*2);ctx.fillStyle='#ECEFF1';ctx.fill();
-  // dorsal fin
   ctx.beginPath();ctx.moveTo(s*0.18,-s*0.44);ctx.lineTo(s*0.58,-s*1.1);ctx.lineTo(s*0.9,-s*0.44);ctx.closePath();ctx.fillStyle='#546E7A';ctx.fill();
-  // pectoral fin
   ctx.beginPath();ctx.moveTo(s*0.12,s*0.3);ctx.lineTo(-s*0.18,s*0.82);ctx.lineTo(s*0.55,s*0.45);ctx.closePath();ctx.fillStyle='#607D8B';ctx.fill();
-  // snout
   ctx.beginPath();ctx.moveTo(s*1.12,-s*0.19);ctx.bezierCurveTo(s*1.56,-s*0.28,s*1.78,-s*0.09,s*1.75,s*0.06);ctx.lineTo(s*1.58,s*0.25);ctx.bezierCurveTo(s*1.24,s*0.32,s*1.02,s*0.23,s*1.02,s*0.23);ctx.closePath();ctx.fillStyle='#78909C';ctx.fill();
-  // mouth
   ctx.beginPath();ctx.moveTo(s*1.22,s*0.03);ctx.quadraticCurveTo(s*1.4,0,s*1.62,s*0.07);ctx.lineTo(s*1.59,s*0.23);ctx.quadraticCurveTo(s*1.38,s*0.25,s*1.22,s*0.23);ctx.closePath();ctx.fillStyle='#B71C1C';ctx.fill();
-  // teeth
   for(let i=0;i<4;i++){const tx=s*1.26+i*s*0.089;ctx.beginPath();ctx.moveTo(tx,s*0.04);ctx.lineTo(tx+s*0.034,s*0.17);ctx.lineTo(tx+s*0.068,s*0.04);ctx.closePath();ctx.fillStyle='#FAFAFA';ctx.fill();}
-  // gills
   for(let g=0;g<3;g++){const gx=s*0.6+g*s*0.15;ctx.beginPath();ctx.moveTo(gx,-s*0.3);ctx.quadraticCurveTo(gx-s*0.06,0,gx,s*0.3);ctx.strokeStyle='#455A64';ctx.lineWidth=2;ctx.stroke();}
-  // eye
   ctx.beginPath();ctx.arc(s*1.12,-s*0.13,s*0.15,0,Math.PI*2);ctx.fillStyle='white';ctx.fill();
   ctx.beginPath();ctx.arc(s*1.15,-s*0.11,s*0.09,0,Math.PI*2);ctx.fillStyle='#0D1B2A';ctx.fill();
   ctx.beginPath();ctx.arc(s*1.185,-s*0.148,s*0.038,0,Math.PI*2);ctx.fillStyle='white';ctx.fill();
@@ -234,7 +220,6 @@ function eatEffect(x,y,col,good){
   for(let i=0;i<22;i++){const a=(Math.PI*2*i)/22+Math.random()*0.5,sp=2.5+Math.random()*5.5;particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-2.2,r:3.5+Math.random()*7,col,life:30+Math.random()*20,max:50});}
   const fs=Math.min(W,H)*0.08,words=good?POP_FISH:POP_BAD;
   popTexts.push({x:x+(Math.random()-0.5)*50,y:y-30,text:words[Math.floor(Math.random()*words.length)],fs,fill:good?'#FFD740':'#FF4444',stroke:good?'#E65100':'#880000',life:55});
-  // Big number floats up
   const nfs=Math.min(W,H)*0.15;
   popTexts.push({x:x+(Math.random()-0.5)*30,y:y+20,text:nw(score),fs:nfs,fill:good?'#FFFFFF':'#FF9999',stroke:good?'#1565C0':'#770000',life:80});
 }
@@ -290,11 +275,11 @@ function collide(){
 }
 
 // ── Controls ──────────────────────────────────────────────────────────────────
-canvas.addEventListener('touchstart',e=>{e.preventDefault();unlockSpeech();targetX=e.touches[0].clientX;targetY=e.touches[0].clientY;},{passive:false});
-canvas.addEventListener('touchmove',e=>{e.preventDefault();targetX=e.touches[0].clientX;targetY=e.touches[0].clientY;},{passive:false});
+canvas.addEventListener('touchstart',e=>{e.preventDefault();unlockSpeech();deliverSpeech();targetX=e.touches[0].clientX;targetY=e.touches[0].clientY;},{passive:false});
+canvas.addEventListener('touchmove',e=>{e.preventDefault();deliverSpeech();targetX=e.touches[0].clientX;targetY=e.touches[0].clientY;},{passive:false});
 canvas.addEventListener('touchend',e=>{e.preventDefault();},{passive:false});
-canvas.addEventListener('mousemove',e=>{targetX=e.clientX;targetY=e.clientY;});
-canvas.addEventListener('mousedown',e=>{unlockSpeech();targetX=e.clientX;targetY=e.clientY;});
+canvas.addEventListener('mousemove',e=>{deliverSpeech();targetX=e.clientX;targetY=e.clientY;});
+canvas.addEventListener('mousedown',e=>{unlockSpeech();deliverSpeech();targetX=e.clientX;targetY=e.clientY;});
 
 // ── Loop ──────────────────────────────────────────────────────────────────────
 let lastTs=0;
