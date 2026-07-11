@@ -1,0 +1,524 @@
+<title>Panda Jump! 🐼</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  background: #1B5220;
+  display: flex; justify-content: center; align-items: center;
+  height: 100vh; overflow: hidden;
+  touch-action: none; user-select: none;
+}
+canvas {
+  display: block;
+  border-radius: 18px;
+  box-shadow: 0 16px 60px rgba(0,0,0,0.55);
+  cursor: pointer;
+}
+</style>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+const W = 800, H = 420;
+canvas.width = W; canvas.height = H;
+
+function resize() {
+  const s = Math.min(window.innerWidth / W, window.innerHeight / H) * 0.96;
+  canvas.style.width = Math.round(W * s) + 'px';
+  canvas.style.height = Math.round(H * s) + 'px';
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ─── Constants ─────────────────────────────────────────────
+const GY = 345;           // ground surface y
+const GRAVITY = 0.58;
+const JUMP_V = -13.8;
+const PW = 54, PH = 66;  // panda draw size
+const SHRINK = 9;         // collision forgiveness
+
+const PCOLS = ['#FF6F6F','#FFD166','#B97FFF','#44DFA0','#FF9A3C','#54C8F0'];
+
+// ─── State ─────────────────────────────────────────────────
+let state = 'start'; // 'start' | 'playing' | 'gameover'
+let score = 0, best = 0, spd = 3.0, frame = 0;
+
+let panda = { x: 110, y: GY - PH, vy: 0, jumps: 0, legT: 0 };
+let pillows = [], parts = [], nextPill = 100;
+
+// Parallax accumulators
+let sf = 0, sm = 0; // far, mid scroll
+
+// Pre-seeded tree & cloud data (deterministic)
+const farTrees = [0,170,340,510,680,850].map((x,i) => ({
+  x, h: 108 + [18,32,8,25,14,30][i], w: 68 + [0,8,-4,6,-2,10][i]
+}));
+const midTrees = [0,140,280,420,560,700,840].map((x,i) => ({
+  x, h: 82 + [12,22,5,18,28,9,16][i], w: 52 + [4,-2,8,0,6,-4,2][i]
+}));
+const clouds = [
+  {x:90,  y:52, s:34},
+  {x:280, y:34, s:26},
+  {x:500, y:58, s:30},
+  {x:690, y:38, s:22},
+];
+
+// ─── Input ─────────────────────────────────────────────────
+function onAction() {
+  if (state === 'start')    { state = 'playing'; doJump(); }
+  else if (state === 'gameover') restart();
+  else doJump();
+}
+canvas.addEventListener('click', onAction);
+canvas.addEventListener('touchstart', e => { e.preventDefault(); onAction(); }, { passive: false });
+window.addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); onAction(); } });
+
+// ─── Gameplay ──────────────────────────────────────────────
+function doJump() {
+  if (panda.jumps < 2) {
+    panda.vy = JUMP_V;
+    panda.jumps++;
+    burst(panda.x + PW / 2, panda.y + PH, 10);
+  }
+}
+
+function burst(x, y, n) {
+  for (let i = 0; i < n; i++) {
+    const a = (Math.PI * 2 * i / n) + (i % 2 === 0 ? 0.2 : -0.2);
+    parts.push({
+      x, y,
+      vx: Math.cos(a) * (1.5 + (i % 3)),
+      vy: Math.sin(a) * (1.5 + (i % 3)) - 1.5,
+      life: 1,
+      r: 3.5 + (i % 3) * 1.5,
+      col: PCOLS[i % PCOLS.length]
+    });
+  }
+}
+
+function spawnPillow() {
+  const h = 32 + (frame % 5) * 8 + Math.round(score / 4) % 18;
+  const h2 = Math.max(32, Math.min(h, 70));
+  const w = 40 + (frame % 4) * 7;
+  pillows.push({
+    x: W + 12,
+    y: GY - h2,
+    w: Math.min(w, 72), h: h2,
+    col: PCOLS[Math.floor(score + pillows.length * 3) % PCOLS.length]
+  });
+  // Occasional double pillow (harder difficulty after score 12)
+  if (score > 12 && (frame % 9 === 0)) {
+    const h3 = 28 + (frame % 3) * 10;
+    pillows.push({
+      x: W + w + 22 + (frame % 5) * 4,
+      y: GY - h3,
+      w: 38 + (frame % 3) * 6, h: h3,
+      col: PCOLS[(score + pillows.length * 2 + 3) % PCOLS.length]
+    });
+  }
+}
+
+function restart() {
+  panda = { x: 110, y: GY - PH, vy: 0, jumps: 0, legT: 0 };
+  pillows = []; parts = [];
+  score = 0; spd = 3.0; frame = 0; nextPill = 100;
+  state = 'playing';
+}
+
+// ─── Utilities ─────────────────────────────────────────────
+function rr(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// ─── Drawing ───────────────────────────────────────────────
+function drawSky() {
+  const g = ctx.createLinearGradient(0, 0, 0, GY);
+  g.addColorStop(0, '#4FABD6');
+  g.addColorStop(1, '#9DD6F2');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, GY);
+}
+
+function drawSun() {
+  ctx.save();
+  ctx.fillStyle = '#FFE566';
+  ctx.shadowColor = '#FFB800'; ctx.shadowBlur = 30;
+  ctx.beginPath(); ctx.arc(W - 88, 68, 36, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawCloud(x, y, s) {
+  ctx.fillStyle = 'rgba(255,255,255,0.88)';
+  ctx.beginPath();
+  ctx.arc(x, y, s * 0.68, 0, Math.PI * 2);
+  ctx.arc(x + s * 0.78, y + s * 0.08, s * 0.54, 0, Math.PI * 2);
+  ctx.arc(x - s * 0.58, y + s * 0.14, s * 0.48, 0, Math.PI * 2);
+  ctx.arc(x + s * 0.18, y + s * 0.22, s * 0.58, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawTree(tx, th, tw, col1, col2) {
+  // Trunk
+  ctx.fillStyle = '#7A5230';
+  ctx.fillRect(tx - tw * 0.09, GY - th * 0.28, tw * 0.18, th * 0.28);
+  // Canopy base
+  ctx.fillStyle = col1;
+  ctx.beginPath(); ctx.ellipse(tx, GY - th * 0.38, tw * 0.52, th * 0.38, 0, 0, Math.PI * 2); ctx.fill();
+  // Left sub-canopy
+  ctx.fillStyle = col2;
+  ctx.beginPath(); ctx.ellipse(tx - tw * 0.22, GY - th * 0.56, tw * 0.38, th * 0.30, -0.18, 0, Math.PI * 2); ctx.fill();
+  // Right sub-canopy
+  ctx.beginPath(); ctx.ellipse(tx + tw * 0.24, GY - th * 0.60, tw * 0.32, th * 0.26, 0.18, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawBgLayer(trees, scroll, tile, col1, col2) {
+  for (const t of trees) {
+    const x = ((t.x - scroll) % tile + tile) % tile - 100;
+    drawTree(x, t.h, t.w, col1, col2);
+  }
+}
+
+function drawGround() {
+  // Main earth
+  const g = ctx.createLinearGradient(0, GY, 0, H);
+  g.addColorStop(0, '#8B6340'); g.addColorStop(1, '#6B4A28');
+  ctx.fillStyle = g; ctx.fillRect(0, GY, W, H - GY);
+  // Grass band
+  ctx.fillStyle = '#5DC43D';
+  ctx.fillRect(0, GY, W, 13);
+  // Grass tufts
+  ctx.fillStyle = '#4AB330';
+  for (let i = 4; i < W; i += 14) {
+    const h2 = 4 + (i * 3) % 5;
+    ctx.fillRect(i, GY - h2, 3, h2);
+  }
+}
+
+function drawPillow({ x, y, w, h, col }) {
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.14)';
+  rr(x + 5, y + 5, w, h, 13); ctx.fill();
+  // Body
+  ctx.fillStyle = col;
+  rr(x, y, w, h, 13); ctx.fill();
+  // Light sheen
+  ctx.fillStyle = 'rgba(255,255,255,0.22)';
+  rr(x + 7, y + 5, w - 14, h - 10, 8); ctx.fill();
+  // Stitching border
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 4]);
+  rr(x + 8, y + 7, w - 16, h - 14, 6); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+  // Center button
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, 3, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawPanda(px, py, legT, airborne) {
+  ctx.save();
+
+  // Ground shadow
+  const shadowScale = airborne ? Math.max(0.3, 1 - (GY - PH - py) / 120) : 1;
+  ctx.fillStyle = `rgba(0,0,0,${0.1 * shadowScale})`;
+  ctx.beginPath(); ctx.ellipse(px + PW / 2, GY + 5, PW * 0.44 * shadowScale, 5 * shadowScale, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Legs
+  if (airborne) {
+    // Tucked
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath(); ctx.ellipse(px + 13, py + PH - 6, 9, 12, -0.45, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(px + PW - 13, py + PH - 6, 9, 12, 0.45, 0, Math.PI * 2); ctx.fill();
+  } else {
+    // Running
+    const a = Math.sin(legT);
+    const b = -a;
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath(); ctx.ellipse(px + 14, py + PH - 4 + a * 3, 8, 13, a * 0.08, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(px + PW - 14, py + PH - 4 + b * 3, 8, 13, b * 0.08, 0, Math.PI * 2); ctx.fill();
+    // Feet
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.ellipse(px + 14 + a * 5, py + PH + 5, 9, 5, a * 0.06, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(px + PW - 14 + b * 5, py + PH + 5, 9, 5, b * 0.06, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Body
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath(); ctx.ellipse(px + PW / 2, py + PH * 0.62, PW * 0.42, PH * 0.36, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Black body markings
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath(); ctx.ellipse(px + 8, py + PH * 0.55, 10, 15, -0.28, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(px + PW - 8, py + PH * 0.55, 10, 15, 0.28, 0, Math.PI * 2); ctx.fill();
+
+  // Arms
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath(); ctx.ellipse(px + 3, py + PH * 0.44, 7, 17, -0.48, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(px + PW - 3, py + PH * 0.44, 7, 17, 0.48, 0, Math.PI * 2); ctx.fill();
+
+  // Bamboo (right hand)
+  ctx.strokeStyle = '#56C05A'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(px + PW, py + PH * 0.32); ctx.lineTo(px + PW + 14, py + PH * 0.06); ctx.stroke();
+  ctx.strokeStyle = '#3FA843'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(px + PW + 4, py + PH * 0.24); ctx.lineTo(px + PW + 12, py + PH * 0.20); ctx.stroke();
+  ctx.fillStyle = '#6ED672';
+  ctx.beginPath(); ctx.ellipse(px + PW + 14, py + PH * 0.05, 6, 3, -0.4, 0, Math.PI * 2); ctx.fill();
+
+  // Head
+  const hx = px + PW / 2, hy = py + 21;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath(); ctx.arc(hx, hy, 22, 0, Math.PI * 2); ctx.fill();
+
+  // Ears
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.ellipse(hx - 14.5, hy - 17, 8.5, 8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(hx + 14.5, hy - 17, 8.5, 8, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Eye patches
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.ellipse(hx - 9, hy - 3, 8.5, 9.5, -0.28, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(hx + 9, hy - 3, 8.5, 9.5, 0.28, 0, Math.PI * 2); ctx.fill();
+
+  // Eyes (white + pupil)
+  ctx.fillStyle = '#FFF';
+  ctx.beginPath(); ctx.arc(hx - 9, hy - 4, 5.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(hx + 9, hy - 4, 5.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.arc(hx - 8, hy - 4, 2.6, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(hx + 10, hy - 4, 2.6, 0, Math.PI * 2); ctx.fill();
+  // Shine dots
+  ctx.fillStyle = '#FFF';
+  ctx.beginPath(); ctx.arc(hx - 7, hy - 5.5, 1.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(hx + 11, hy - 5.5, 1.2, 0, Math.PI * 2); ctx.fill();
+
+  // Nose
+  ctx.fillStyle = '#333';
+  ctx.beginPath(); ctx.ellipse(hx, hy + 5, 4.5, 3, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Smile
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.arc(hx, hy + 6, 5.5, 0.12, Math.PI - 0.12); ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawHUD() {
+  // Score pill
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  rr(12, 12, 140, 40, 20); ctx.fill();
+  ctx.fillStyle = '#FFF';
+  ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('⭐ ' + score, 24, 32);
+  if (best > 0) {
+    ctx.font = 'bold 13px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText('Best ' + best, 24, 47);
+  }
+  ctx.restore();
+
+  // Jump hint (fades after score > 3)
+  if (score < 4) {
+    const alpha = Math.max(0, 1 - score / 4);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    rr(W / 2 - 90, H - 52, 180, 36, 18); ctx.fill();
+    ctx.fillStyle = '#FFF';
+    ctx.font = 'bold 16px system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('Tap to Jump! 🐾', W / 2, H - 34);
+    ctx.restore();
+  }
+}
+
+function drawStartScreen() {
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.save();
+  // Card
+  ctx.fillStyle = '#FFFDF5';
+  ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = 28;
+  rr(W / 2 - 215, 95, 430, 210, 28); ctx.fill();
+  ctx.shadowBlur = 0;
+
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+  // Title
+  ctx.font = 'bold 46px system-ui, -apple-system, sans-serif';
+  ctx.fillStyle = '#2A7A38';
+  ctx.fillText('🐼 Panda Jump!', W / 2, 158);
+
+  // Subtitle
+  ctx.font = '21px system-ui, sans-serif';
+  ctx.fillStyle = '#888';
+  ctx.fillText('A game for Naavya 🌟', W / 2, 196);
+
+  // CTA
+  ctx.font = 'bold 24px system-ui, sans-serif';
+  ctx.fillStyle = '#FF6F6F';
+  ctx.fillText('Tap anywhere to start!', W / 2, 270);
+
+  ctx.restore();
+}
+
+function drawGameOver() {
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.save();
+  ctx.fillStyle = '#FFFDF5';
+  ctx.shadowColor = 'rgba(0,0,0,0.22)'; ctx.shadowBlur = 28;
+  rr(W / 2 - 230, 85, 460, 240, 28); ctx.fill();
+  ctx.shadowBlur = 0;
+
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+  ctx.font = 'bold 42px system-ui, sans-serif';
+  ctx.fillStyle = '#E84040';
+  ctx.fillText('Oopsie! 🛌', W / 2, 143);
+
+  ctx.font = '20px system-ui, sans-serif';
+  ctx.fillStyle = '#666';
+  ctx.fillText('Panda bumped a pillow!', W / 2, 182);
+
+  ctx.font = 'bold 24px system-ui, sans-serif';
+  ctx.fillStyle = '#2A7A38';
+  const newBest = score >= best && score > 0;
+  ctx.fillText('Score: ' + score + (newBest ? '  🎉 New best!' : ''), W / 2, 220);
+
+  if (!newBest && best > 0) {
+    ctx.font = '17px system-ui, sans-serif';
+    ctx.fillStyle = '#999';
+    ctx.fillText('Best: ' + best, W / 2, 248);
+  }
+
+  ctx.font = 'bold 22px system-ui, sans-serif';
+  ctx.fillStyle = '#FF6F6F';
+  ctx.fillText('Tap to play again! 🐾', W / 2, 292);
+  ctx.restore();
+}
+
+// ─── Update ────────────────────────────────────────────────
+function update() {
+  if (state !== 'playing') return;
+  frame++;
+
+  // Panda physics
+  panda.vy += GRAVITY;
+  panda.y += panda.vy;
+  if (panda.y >= GY - PH) {
+    panda.y = GY - PH;
+    panda.vy = 0;
+    panda.jumps = 0;
+  }
+  if (panda.y <= 0) { panda.y = 0; panda.vy = 0; }
+  const onGround = panda.y >= GY - PH - 1;
+  if (onGround) panda.legT += 0.22;
+
+  // Speed ramp
+  spd = 3.0 + score * 0.018;
+
+  // Parallax
+  sf += spd * 0.28;
+  sm += spd * 0.58;
+
+  // Clouds drift
+  for (const c of clouds) {
+    c.x -= 0.35;
+    if (c.x < -80) c.x = W + 80;
+  }
+
+  // Score
+  if (frame % 10 === 0) score++;
+
+  // Pillows
+  nextPill--;
+  if (nextPill <= 0) {
+    spawnPillow();
+    nextPill = Math.max(50, 105 - score * 0.7 + (frame % 3) * 4);
+  }
+  for (const pl of pillows) pl.x -= spd;
+  pillows = pillows.filter(pl => pl.x + pl.w > -5);
+
+  // Collision (shrunken hitbox)
+  const pb = { x: panda.x + SHRINK, y: panda.y + SHRINK, w: PW - SHRINK * 2, h: PH - SHRINK };
+  for (const pl of pillows) {
+    if (pb.x < pl.x + pl.w && pb.x + pb.w > pl.x &&
+        pb.y < pl.y + pl.h && pb.y + pb.h > pl.y) {
+      if (score > best) best = score;
+      state = 'gameover';
+      burst(panda.x + PW / 2, panda.y + PH / 2, 20);
+      break;
+    }
+  }
+
+  // Particles
+  for (const pt of parts) {
+    pt.x += pt.vx; pt.y += pt.vy;
+    pt.vy += 0.14;
+    pt.life -= 0.028;
+  }
+  parts = parts.filter(pt => pt.life > 0);
+}
+
+// ─── Draw ──────────────────────────────────────────────────
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  drawSky();
+  drawSun();
+
+  for (const c of clouds) drawCloud(c.x, c.y, c.s);
+
+  // Far jungle (muted, slow)
+  drawBgLayer(farTrees, sf, W + 200, '#2D7840', '#256834');
+
+  // Mid jungle (richer, faster)
+  drawBgLayer(midTrees, sm, W + 200, '#3AA850', '#30923F');
+
+  drawGround();
+
+  for (const pl of pillows) drawPillow(pl);
+
+  drawPanda(panda.x, panda.y, panda.legT, panda.y < GY - PH - 2);
+
+  // Particles
+  for (const pt of parts) {
+    ctx.globalAlpha = Math.max(0, pt.life);
+    ctx.fillStyle = pt.col;
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  if (state === 'playing')  drawHUD();
+  if (state === 'start')    drawStartScreen();
+  if (state === 'gameover') drawGameOver();
+}
+
+// ─── Loop ──────────────────────────────────────────────────
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
