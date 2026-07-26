@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Naavya's Number Game</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #FFF7ED;
+      --text: #231830;
+      --muted: #7A6A84;
+      --star-on: #F59E0B;
+      --star-off: #DDD0C8;
+      --key-bg: #FFFFFF;
+      --key-shadow: #D4C4BC;
+      --key-text: #231830;
+      --key-hover: #F8F0E8;
+      --fb-ok-bg: rgba(16,185,129,0.12);
+      --fb-ok-txt: #065F46;
+      --fb-err-bg: rgba(239,68,68,0.12);
+      --fb-err-txt: #991B1B;
+      --divider: #E0D4CC;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1A0F26; --text: #F2E8D8; --muted: #9B8BAA;
+        --star-on: #F59E0B; --star-off: #3A2952;
+        --key-bg: #2B1A3F; --key-shadow: #0E0718; --key-text: #F2E8D8; --key-hover: #361F50;
+        --fb-ok-txt: #34D399; --fb-err-txt: #FCA5A5; --divider: #3A2952;
+      }
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Trebuchet MS', 'Segoe UI Rounded', 'Arial Rounded MT Bold', Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .wrap {
+      width: 100%;
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+    }
+
+    h1 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; text-align: center; }
+    h1 span { color: #EF4444; }
+
+    .stars { display: flex; gap: 5px; }
+    .star {
+      font-size: 1.7rem;
+      color: var(--star-off);
+      transition: color 0.25s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      line-height: 1;
+    }
+    .star.on { color: var(--star-on); }
+    @keyframes star-pop {
+      0% { transform: scale(1); } 50% { transform: scale(2); } 100% { transform: scale(1.15); }
+    }
+    .star.pop { animation: star-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+    .card {
+      width: 186px; height: 186px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      transition: background-color 0.35s ease; flex-shrink: 0;
+    }
+    .card .num {
+      font-size: 5.5rem; font-weight: 900; color: #fff;
+      text-shadow: 0 3px 14px rgba(0,0,0,0.22);
+      line-height: 1; font-variant-numeric: tabular-nums;
+    }
+
+    @keyframes pop-in {
+      0%   { transform: scale(0.3) rotate(-8deg); opacity: 0; }
+      70%  { transform: scale(1.12) rotate(2deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0); opacity: 1; }
+    }
+    .card.anim { animation: pop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0) rotate(0); }
+      20% { transform: translateX(-11px) rotate(-2deg); }
+      40% { transform: translateX(11px) rotate(2deg); }
+      60% { transform: translateX(-8px) rotate(-1deg); }
+      80% { transform: translateX(8px) rotate(1deg); }
+    }
+    .card.shake { animation: shake 0.38s ease both; }
+
+    .speak-zone {
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+    }
+
+    .mic-btn {
+      width: 100px; height: 100px; border-radius: 50%;
+      background: #EF4444; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 7px 0 #B91C1C;
+      position: relative;
+      transition: transform 0.1s, box-shadow 0.1s, background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mic-btn:active { transform: translateY(5px); box-shadow: 0 2px 0 #B91C1C; }
+    .mic-btn:focus-visible { outline: 3px solid #F59E0B; outline-offset: 4px; }
+    .mic-btn.listening { background: #DC2626; box-shadow: 0 7px 0 #991B1B; }
+    .mic-btn.listening::before,
+    .mic-btn.listening::after {
+      content: '';
+      position: absolute; inset: -8px; border-radius: 50%;
+      border: 3px solid rgba(239,68,68,0.55);
+      animation: mic-ring 1.3s ease-out infinite;
+      pointer-events: none;
+    }
+    .mic-btn.listening::after {
+      inset: -22px; border-color: rgba(239,68,68,0.28); animation-delay: 0.43s;
+    }
+    @keyframes mic-ring {
+      0%   { transform: scale(0.9); opacity: 1; }
+      100% { transform: scale(1.2); opacity: 0; }
+    }
+    .mic-btn.disabled-mic {
+      background: var(--muted); box-shadow: 0 7px 0 #5a4a64;
+      cursor: not-allowed; opacity: 0.55;
+    }
+
+    .mic-label {
+      font-size: 0.9rem; font-weight: 700;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      color: var(--muted); transition: color 0.2s;
+    }
+    .mic-label.active { color: #EF4444; }
+
+    .or-tap {
+      font-size: 0.75rem; color: var(--muted);
+      letter-spacing: 0.07em; text-transform: uppercase; font-weight: 600;
+      display: flex; align-items: center; gap: 10px; width: 100%;
+    }
+    .or-tap::before, .or-tap::after {
+      content: ''; flex: 1; height: 1px; background: var(--divider);
+    }
+
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+    .btn {
+      appearance: none; -webkit-appearance: none; border: none;
+      background: var(--key-bg); border-radius: 14px; height: 56px;
+      font-size: 1.4rem; font-weight: 800; color: var(--key-text);
+      font-family: inherit; box-shadow: 0 5px 0 var(--key-shadow);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      user-select: none; -webkit-tap-highlight-color: transparent;
+      transition: background-color 0.1s; padding: 0;
+    }
+    .btn.ten { grid-column: span 3; height: 50px; font-size: 1.5rem; }
+    .btn:hover  { background: var(--key-hover); }
+    .btn:active { box-shadow: 0 2px 0 var(--key-shadow); transform: translateY(3px); }
+    .btn:focus-visible { outline: 3px solid #EF4444; outline-offset: 2px; }
+
+    .fb {
+      width: 100%; min-height: 52px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; font-weight: 700; padding: 10px 16px; text-align: center;
+      opacity: 0; transform: scale(0.9); transition: opacity 0.2s, transform 0.2s;
+      line-height: 1.4;
+    }
+    .fb.show { opacity: 1; transform: scale(1); }
+    .fb.ok   { background: var(--fb-ok-bg);  color: var(--fb-ok-txt); }
+    .fb.err  { background: var(--fb-err-bg); color: var(--fb-err-txt); }
+
+    #cf { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 50; }
+    .cp { position: absolute; top: -40px; animation: cf-fall linear forwards; }
+    @keyframes cf-fall {
+      from { transform: translateY(0) rotate(0deg); opacity: 1; }
+      to   { transform: translateY(110vh) rotate(600deg); opacity: 0.1; }
+    }
+
+    #cel {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55); backdrop-filter: blur(6px);
+      z-index: 200; align-items: center; justify-content: center; padding: 24px;
+    }
+    #cel.on { display: flex; }
+    .cel-box {
+      background: #FFF7ED; border-radius: 30px; padding: 44px 36px;
+      text-align: center; max-width: 300px; width: 100%;
+      animation: pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+    .cel-icon { font-size: 5rem; display: block; margin-bottom: 10px; animation: sway 0.7s ease-in-out infinite alternate; }
+    @keyframes sway { from { transform: rotate(-12deg) scale(1); } to { transform: rotate(12deg) scale(1.1); } }
+    .cel-h { font-size: 2.2rem; font-weight: 900; color: #231830; margin-bottom: 8px; }
+    .cel-p { font-size: 1rem; color: #7A6A84; margin-bottom: 28px; line-height: 1.65; }
+    .cel-btn {
+      appearance: none; border: none; background: #EF4444; color: white;
+      border-radius: 16px; padding: 14px 40px; font-size: 1.1rem; font-weight: 800;
+      font-family: inherit; cursor: pointer; box-shadow: 0 5px 0 #B91C1C;
+    }
+    .cel-btn:active { box-shadow: 0 2px 0 #B91C1C; transform: translateY(3px); }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="cf" aria-hidden="true"></div>
+
+<div id="cel" role="dialog" aria-modal="true" aria-label="Congratulations!">
+  <div class="cel-box">
+    <span class="cel-icon">&#x1F36C;</span>
+    <div class="cel-h">10 Stars!!</div>
+    <div class="cel-p">You did it, Naavya!<br><strong>Papa owes you a candy! &#x1F389;</strong></div>
+    <button class="cel-btn" id="again">Play Again!</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <h1>Naavya's <span>Number</span> Game</h1>
+  <div class="stars" id="stars" role="status" aria-label="Score: 0 out of 10 stars"></div>
+
+  <div class="card" id="card">
+    <div class="num" id="numDisplay"></div>
+  </div>
+
+  <div class="speak-zone">
+    <button class="mic-btn" id="mic-btn" aria-label="Tap to say the number">
+      <svg width="38" height="38" viewBox="0 0 24 24" fill="none"
+           stroke="white" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="9" y="2" width="6" height="12" rx="3"/>
+        <path d="M5 10a7 7 0 0 0 14 0"/>
+        <line x1="12" y1="19" x2="12" y2="22"/>
+        <line x1="8" y1="22" x2="16" y2="22"/>
+      </svg>
+    </button>
+    <div class="mic-label" id="mic-label">Tap &amp; say!</div>
+  </div>
+
+  <div class="or-tap" id="or-tap-label">or tap a number</div>
+  <div class="grid" role="group" aria-label="Number buttons">
+    <button class="btn" data-n="1">1</button>
+    <button class="btn" data-n="2">2</button>
+    <button class="btn" data-n="3">3</button>
+    <button class="btn" data-n="4">4</button>
+    <button class="btn" data-n="5">5</button>
+    <button class="btn" data-n="6">6</button>
+    <button class="btn" data-n="7">7</button>
+    <button class="btn" data-n="8">8</button>
+    <button class="btn" data-n="9">9</button>
+    <button class="btn ten" data-n="10">10</button>
+  </div>
+
+  <div class="fb" id="fb" role="status" aria-live="polite"></div>
+</div>
+
+<script>
+let _ctx = null;
+function audio() {
+  if (!_ctx) _ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_ctx.state === 'suspended') _ctx.resume();
+  return _ctx;
+}
+
+function playBeep() {
+  const ctx = audio();
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = 'sine'; o.frequency.value = 880;
+  o.connect(g); g.connect(ctx.destination);
+  const t = ctx.currentTime;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.25, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+  o.start(t); o.stop(t + 0.2);
+}
+
+function playClapping() {
+  const ctx = audio();
+  [[0,1],[0.3,1],[0.58,1],[0.62,0.7],[0.66,0.5]].forEach(([delay,vol]) => {
+    const len = Math.floor(ctx.sampleRate * 0.07);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1-i/len, 1.5);
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1100;
+    const bp = ctx.createBiquadFilter(); bp.type = 'peaking'; bp.frequency.value = 2500; bp.gain.value = 8;
+    const g = ctx.createGain(); g.gain.value = vol * 1.2;
+    src.connect(hp); hp.connect(bp); bp.connect(g); g.connect(ctx.destination);
+    src.start(ctx.currentTime + delay);
+  });
+  [[523,0.05],[659,0.18],[784,0.31],[1047,0.44]].forEach(([f,t]) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'triangle'; o.frequency.value = f;
+    o.connect(g); g.connect(ctx.destination);
+    const s = ctx.currentTime + t;
+    g.gain.setValueAtTime(0, s);
+    g.gain.linearRampToValueAtTime(0.28, s+0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, s+0.28);
+    o.start(s); o.stop(s+0.3);
+  });
+}
+
+function playGrr() {
+  const ctx = audio();
+  const o = ctx.createOscillator();
+  const lfo = ctx.createOscillator();
+  const lfoG = ctx.createGain();
+  const g = ctx.createGain();
+  const dist = ctx.createWaveShaper();
+  const curve = new Float32Array(256);
+  for (let i = 0; i < 256; i++) {
+    const x = (i*2)/256-1;
+    curve[i] = (Math.PI+80)*x/(Math.PI+80*Math.abs(x));
+  }
+  dist.curve = curve;
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(110, ctx.currentTime);
+  o.frequency.linearRampToValueAtTime(75, ctx.currentTime+0.65);
+  lfo.type = 'sine'; lfo.frequency.value = 9; lfoG.gain.value = 22;
+  lfo.connect(lfoG); lfoG.connect(o.frequency);
+  o.connect(dist); dist.connect(g); g.connect(ctx.destination);
+  const t = ctx.currentTime;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.5,t+0.07);
+  g.gain.setValueAtTime(0.5,t+0.55); g.gain.linearRampToValueAtTime(0,t+0.8);
+  o.start(t); lfo.start(t); o.stop(t+0.85); lfo.stop(t+0.85);
+}
+
+function playCelebration() {
+  const ctx = audio();
+  [0,0.27,0.54,0.81,1.08,1.12,1.16].forEach(delay => {
+    const len = Math.floor(ctx.sampleRate*0.08);
+    const buf = ctx.createBuffer(1,len,ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,1.4);
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=1000;
+    const g = ctx.createGain(); g.gain.value=1.3;
+    src.connect(hp); hp.connect(g); g.connect(ctx.destination);
+    src.start(ctx.currentTime+delay);
+  });
+  [[523,0.1],[659,0.25],[784,0.4],[1047,0.55],[784,0.7],[1047,0.85],[1319,1.05]].forEach(([f,t]) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type='triangle'; o.frequency.value=f;
+    o.connect(g); g.connect(ctx.destination);
+    const s=ctx.currentTime+t;
+    g.gain.setValueAtTime(0,s); g.gain.linearRampToValueAtTime(0.38,s+0.02);
+    g.gain.exponentialRampToValueAtTime(0.001,s+0.38);
+    o.start(s); o.stop(s+0.42);
+  });
+}
+
+const COLORS=['#FF5C5C','#3BA4D5','#F59E0B','#8B5CF6','#10B981','#EC4899','#F97316','#06B6D4','#7C3AED','#22C55E'];
+const WORDS={'zero':0,'oh':0,'one':1,'won':1,'un':1,'wan':1,'two':2,'to':2,'too':2,'tu':2,'three':3,'tree':3,'free':3,'four':4,'for':4,'fore':4,'five':5,'fife':5,'six':6,'seven':7,'eight':8,'ate':8,'nine':9,'nein':9,'ten':10,'tin':10};
+
+let target=0,score=0,colorIdx=0,fbTimer=null,locked=false,listening=false,rec=null;
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (SR) {
+  rec = new SR();
+  rec.lang = 'en-US';
+  rec.continuous = false;
+  rec.interimResults = false;
+  rec.maxAlternatives = 5;
+  rec.onresult = function(e) {
+    const alts = [];
+    for (let i=0;i<e.results[0].length;i++) alts.push(e.results[0][i].transcript.trim().toLowerCase());
+    handleSpeech(alts);
+  };
+  rec.onend = function() { setMicState(false); };
+  rec.onerror = function(e) {
+    setMicState(false);
+    if (e.error==='not-allowed'||e.error==='service-not-allowed') {
+      showFeedback('err','Tap Allow when the browser asks for the microphone!');
+    } else if (e.error==='no-speech') {
+      showFeedback('err',"I didn't hear anything — try again! 🎤");
+    }
+  };
+} else {
+  document.getElementById('mic-btn').classList.add('disabled-mic');
+  document.getElementById('mic-btn').disabled = true;
+  document.getElementById('mic-label').textContent = 'Tap a number below';
+  document.getElementById('or-tap-label').style.display = 'none';
+}
+
+function startListening() {
+  if (!rec||listening||locked) return;
+  audio(); playBeep(); hideFeedback();
+  try { rec.start(); setMicState(true); } catch(err) {}
+}
+
+function setMicState(active) {
+  listening = active;
+  const btn = document.getElementById('mic-btn');
+  const lbl = document.getElementById('mic-label');
+  if (active) {
+    btn.classList.add('listening');
+    btn.setAttribute('aria-label','Listening… say the number!');
+    lbl.textContent = 'Listening…';
+    lbl.classList.add('active');
+  } else {
+    btn.classList.remove('listening');
+    btn.setAttribute('aria-label','Tap to say the number');
+    lbl.textContent = 'Tap & say!';
+    lbl.classList.remove('active');
+  }
+}
+
+function parseNumber(text) {
+  text = text.toLowerCase().replace(/[^a-z0-9\s]/g,'').trim();
+  const asInt = parseInt(text,10);
+  if (!isNaN(asInt)&&asInt>=1&&asInt<=10) return asInt;
+  for (const word of text.split(/\s+/)) {
+    if (word in WORDS&&WORDS[word]>=1) return WORDS[word];
+    const n=parseInt(word,10);
+    if (!isNaN(n)&&n>=1&&n<=10) return n;
+  }
+  return null;
+}
+
+function handleSpeech(alts) {
+  for (const alt of alts) {
+    const n=parseNumber(alt);
+    if (n!==null) { guess(n,alt); return; }
+  }
+  const heard=alts[0]?'"'+alts[0]+'"':'something';
+  showFeedback('err','I heard '+heard+' — try again! 🎤');
+}
+
+function buildStars() {
+  const el=document.getElementById('stars');
+  el.setAttribute('aria-label','Score: '+score+' out of 10 stars');
+  el.innerHTML='';
+  for (let i=0;i<10;i++) {
+    const s=document.createElement('span');
+    s.className='star'+(i<score?' on':'');
+    s.setAttribute('aria-hidden','true');
+    s.textContent='★';
+    el.appendChild(s);
+  }
+}
+
+function nextRound() {
+  locked=false;
+  target=Math.floor(Math.random()*10)+1;
+  const card=document.getElementById('card');
+  card.style.backgroundColor=COLORS[colorIdx%COLORS.length];
+  colorIdx++;
+  document.getElementById('numDisplay').textContent=target;
+  card.classList.remove('anim','shake');
+  void card.offsetWidth;
+  card.classList.add('anim');
+  hideFeedback();
+}
+
+function guess(n,heardText) {
+  if (locked) return;
+  const prefix=heardText?'I heard "'+heardText+'" — ':'';
+  if (n===target) {
+    locked=true; score++; buildStars(); playClapping();
+    const stars=document.querySelectorAll('#stars .star');
+    const earned=stars[score-1];
+    if (earned) { earned.classList.add('pop'); setTimeout(function(){earned.classList.remove('pop');},420); }
+    showFeedback('ok',prefix+'🎉 Yes! That\'s right!');
+    spawnConfetti(12);
+    if (score>=10) {
+      setTimeout(function(){ document.getElementById('cel').classList.add('on'); playCelebration(); spawnConfetti(70); },700);
+    } else { setTimeout(nextRound,1100); }
+  } else {
+    playGrr();
+    showFeedback('err',prefix+'Grrrr! 😤 Try again!');
+    const card=document.getElementById('card');
+    card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake');
+    setTimeout(function(){card.classList.remove('shake');},400);
+  }
+}
+
+function showFeedback(type,msg) {
+  const el=document.getElementById('fb');
+  if (fbTimer) clearTimeout(fbTimer);
+  el.className='fb '+type+' show';
+  el.textContent=msg;
+  if (type==='ok') fbTimer=setTimeout(hideFeedback,1000);
+}
+
+function hideFeedback() {
+  const el=document.getElementById('fb');
+  el.className='fb'; el.textContent='';
+}
+
+function spawnConfetti(n) {
+  const wrap=document.getElementById('cf');
+  const clrs=['#FF5C5C','#FFD700','#3BA4D5','#8B5CF6','#10B981','#F97316','#EC4899'];
+  for (let i=0;i<n;i++) {
+    const p=document.createElement('div'); p.className='cp';
+    const size=9+Math.random()*10;
+    p.style.left=Math.random()*100+'vw';
+    p.style.width=size+'px'; p.style.height=size+'px';
+    p.style.background=clrs[Math.floor(Math.random()*clrs.length)];
+    p.style.borderRadius=Math.random()>0.5?'50%':'3px';
+    p.style.animationDuration=(1.6+Math.random()*2.4)+'s';
+    p.style.animationDelay=(Math.random()*0.7)+'s';
+    wrap.appendChild(p);
+    setTimeout(function(){p.remove();},4500);
+  }
+}
+
+function restart() {
+  score=0; colorIdx=0; locked=false;
+  document.getElementById('cel').classList.remove('on');
+  buildStars(); nextRound();
+}
+
+document.getElementById('mic-btn').addEventListener('click',startListening);
+document.querySelector('.grid').addEventListener('click',function(e){
+  const btn=e.target.closest('[data-n]');
+  if (btn) { audio(); guess(parseInt(btn.dataset.n,10),null); }
+});
+document.getElementById('again').addEventListener('click',restart);
+document.addEventListener('keydown',function(e){
+  if (document.getElementById('cel').classList.contains('on')) return;
+  if (e.key>='1'&&e.key<='9') guess(parseInt(e.key,10),null);
+  else if (e.key==='0') guess(10,null);
+  else if (e.key===' '||e.key==='Enter') startListening();
+});
+
+buildStars();
+nextRound();
+</script>
+</body>
+</html>
