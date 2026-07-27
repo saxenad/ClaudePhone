@@ -321,17 +321,13 @@ function playGrr() {
   o.type = 'sawtooth';
   o.frequency.setValueAtTime(110, ctx.currentTime);
   o.frequency.linearRampToValueAtTime(75, ctx.currentTime+0.65);
-  lfo.type = 'sine'; lfo.frequency.value = 9;
-  lfoG.gain.value = 22;
+  lfo.type = 'sine'; lfo.frequency.value = 9; lfoG.gain.value = 22;
   lfo.connect(lfoG); lfoG.connect(o.frequency);
   o.connect(dist); dist.connect(g); g.connect(ctx.destination);
   const t = ctx.currentTime;
-  g.gain.setValueAtTime(0,t);
-  g.gain.linearRampToValueAtTime(0.5,t+0.07);
-  g.gain.setValueAtTime(0.5,t+0.55);
-  g.gain.linearRampToValueAtTime(0,t+0.8);
-  o.start(t); lfo.start(t);
-  o.stop(t+0.85); lfo.stop(t+0.85);
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.5,t+0.07);
+  g.gain.setValueAtTime(0.5,t+0.55); g.gain.linearRampToValueAtTime(0,t+0.8);
+  o.start(t); lfo.start(t); o.stop(t+0.85); lfo.stop(t+0.85);
 }
 
 function playCelebration() {
@@ -352,8 +348,7 @@ function playCelebration() {
     o.type='triangle'; o.frequency.value=f;
     o.connect(g); g.connect(ctx.destination);
     const s=ctx.currentTime+t;
-    g.gain.setValueAtTime(0,s);
-    g.gain.linearRampToValueAtTime(0.38,s+0.02);
+    g.gain.setValueAtTime(0,s); g.gain.linearRampToValueAtTime(0.38,s+0.02);
     g.gain.exponentialRampToValueAtTime(0.001,s+0.38);
     o.start(s); o.stop(s+0.42);
   });
@@ -380,7 +375,7 @@ if (SR) {
   rec.onerror = function(e) {
     setMicState(false);
     if (e.error==='not-allowed'||e.error==='service-not-allowed') {
-      showFeedback('err','Microphone blocked — tap Allow when the browser asks!');
+      showFeedback('err','Tap Allow when the browser asks for the microphone!');
     } else if (e.error==='no-speech') {
       showFeedback('err',"I didn't hear anything — try again! 🎤");
     }
@@ -432,13 +427,13 @@ function handleSpeech(alts) {
     const n=parseNumber(alt);
     if (n!==null) { guess(n,alt); return; }
   }
-  const heard=alts[0]?`"${alts[0]}"`:'something';
-  showFeedback('err',`I heard ${heard} — try again! 🎤`);
+  const heard=alts[0]?'"'+alts[0]+'"':'something';
+  showFeedback('err','I heard '+heard+' — try again! 🎤');
 }
 
 function buildStars() {
   const el=document.getElementById('stars');
-  el.setAttribute('aria-label',`Score: ${score} out of 10 stars`);
+  el.setAttribute('aria-label','Score: '+score+' out of 10 stars');
   el.innerHTML='';
   for (let i=0;i<10;i++) {
     const s=document.createElement('span');
@@ -464,30 +459,29 @@ function nextRound() {
 
 function guess(n,heardText) {
   if (locked) return;
-  const prefix=heardText?`I heard "${heardText}" — `:‘';
   if (n===target) {
     locked=true; score++; buildStars(); playClapping();
     const stars=document.querySelectorAll('#stars .star');
     const earned=stars[score-1];
-    if (earned) { earned.classList.add('pop'); setTimeout(()=>earned.classList.remove('pop'),420); }
-    showFeedback('ok',prefix+'🎉 Yes! That\'s right!');
+    if (earned) { earned.classList.add('pop'); setTimeout(function(){earned.classList.remove('pop');},420); }
+    showFeedback('ok','🎉 Yes! That\'s right!');
     spawnConfetti(12);
     if (score>=10) {
-      setTimeout(()=>{ document.getElementById('cel').classList.add('on'); playCelebration(); spawnConfetti(70); },700);
+      setTimeout(function(){ document.getElementById('cel').classList.add('on'); playCelebration(); spawnConfetti(70); },700);
     } else { setTimeout(nextRound,1100); }
   } else {
     playGrr();
-    showFeedback('err',prefix+'Grrrr! 😤 Try again!');
+    showFeedback('err',"That's not right — this number is "+target+"! Say it again! 🎤");
     const card=document.getElementById('card');
     card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake');
-    setTimeout(()=>card.classList.remove('shake'),400);
+    setTimeout(function(){card.classList.remove('shake');},400);
   }
 }
 
 function showFeedback(type,msg) {
   const el=document.getElementById('fb');
   if (fbTimer) clearTimeout(fbTimer);
-  el.className=`fb ${type} show`;
+  el.className='fb '+type+' show';
   el.textContent=msg;
   if (type==='ok') fbTimer=setTimeout(hideFeedback,1000);
 }
@@ -510,7 +504,7 @@ function spawnConfetti(n) {
     p.style.animationDuration=(1.6+Math.random()*2.4)+'s';
     p.style.animationDelay=(Math.random()*0.7)+'s';
     wrap.appendChild(p);
-    setTimeout(()=>p.remove(),4500);
+    setTimeout(function(){p.remove();},4500);
   }
 }
 
@@ -521,12 +515,12 @@ function restart() {
 }
 
 document.getElementById('mic-btn').addEventListener('click',startListening);
-document.querySelector('.grid').addEventListener('click',e=>{
+document.querySelector('.grid').addEventListener('click',function(e){
   const btn=e.target.closest('[data-n]');
   if (btn) { audio(); guess(parseInt(btn.dataset.n,10),null); }
 });
 document.getElementById('again').addEventListener('click',restart);
-document.addEventListener('keydown',e=>{
+document.addEventListener('keydown',function(e){
   if (document.getElementById('cel').classList.contains('on')) return;
   if (e.key>='1'&&e.key<='9') guess(parseInt(e.key,10),null);
   else if (e.key==='0') guess(10,null);
