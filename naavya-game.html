@@ -334,8 +334,6 @@ function playCelebration() {
 }
 
 /* ── Speech synthesis ────────────────────────────────────── */
-// iOS Safari requires speechSynthesis.speak() to be called during a user gesture.
-// We prime it silently on the first mic/button tap, then subsequent speak() calls work.
 let speechPrimed = false;
 let pendingSpeech = null;
 
@@ -355,13 +353,12 @@ function speak(text) {
   window.speechSynthesis.speak(u);
 }
 
-// When mic is active iOS routes audio away from speaker.
-// Queue speech to fire after mic fully closes (onend).
 function speakWhenReady(text) {
   if (listening) {
     pendingSpeech = text;
   } else {
-    setTimeout(function() { speak(text); }, 80);
+    // 500ms gives iOS time for the TTS primer to complete before we cancel+speak
+    setTimeout(function() { speak(text); }, 500);
   }
 }
 
@@ -370,7 +367,7 @@ const COLORS=['#FF5C5C','#3BA4D5','#F59E0B','#8B5CF6','#10B981','#EC4899','#F973
 const WORDS={'zero':0,'oh':0,'one':1,'won':1,'un':1,'wan':1,'two':2,'to':2,'too':2,'tu':2,'three':3,'tree':3,'free':3,'four':4,'for':4,'fore':4,'five':5,'fife':5,'six':6,'seven':7,'eight':8,'ate':8,'nine':9,'nein':9,'ten':10,'tin':10};
 
 let target=0,score=0,colorIdx=0,fbTimer=null,locked=false,listening=false,rec=null;
-let recHandled = false; // prevents double-processing when aborting early
+let recHandled = false;
 
 /* ── Speech recognition ──────────────────────────────────── */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -379,14 +376,13 @@ if (SR) {
   rec = new SR();
   rec.lang = 'en-US';
   rec.continuous = false;
-  rec.interimResults = true;  // get results immediately as user speaks
+  rec.interimResults = true;
   rec.maxAlternatives = 3;
 
   rec.onresult = function(e) {
     if (recHandled) return;
     for (let i = e.resultIndex; i < e.results.length; i++) {
       if (e.results[i].isFinal) {
-        // Final result — collect all alternatives
         recHandled = true;
         const alts = [];
         for (let j = 0; j < e.results[i].length; j++) {
@@ -395,7 +391,6 @@ if (SR) {
         handleSpeech(alts);
         return;
       } else {
-        // Interim result — if a number is already clear, act immediately
         const t = e.results[i][0].transcript.trim().toLowerCase();
         if (parseNumber(t) !== null) {
           recHandled = true;
@@ -410,11 +405,11 @@ if (SR) {
   rec.onend = function() {
     recHandled = false;
     setMicState(false);
-    // Now the mic is closed — safe to speak on iOS
     if (pendingSpeech) {
       const text = pendingSpeech;
       pendingSpeech = null;
-      setTimeout(function() { speak(text); }, 80);
+      // 500ms lets iOS fully release the mic audio session before TTS plays
+      setTimeout(function() { speak(text); }, 500);
     }
   };
 
@@ -435,8 +430,9 @@ if (SR) {
 
 function startListening() {
   if (!rec||listening||locked) return;
-  primeSpeech();  // unlock TTS during this user gesture
+  // cancel() BEFORE primeSpeech() — otherwise cancel() immediately kills the unlock utterance
   if (window.speechSynthesis) window.speechSynthesis.cancel();
+  primeSpeech();
   audio(); playBeep(); hideFeedback();
   try { rec.start(); setMicState(true); } catch(err) {}
 }
@@ -573,7 +569,7 @@ document.getElementById('mic-btn').addEventListener('click', startListening);
 document.querySelector('.grid').addEventListener('click', function(e) {
   const btn = e.target.closest('[data-n]');
   if (btn) {
-    primeSpeech(); // unlock TTS during this user gesture
+    primeSpeech();
     audio();
     guess(parseInt(btn.dataset.n, 10), null);
   }
