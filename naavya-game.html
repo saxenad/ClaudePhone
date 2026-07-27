@@ -260,6 +260,7 @@
 </div>
 
 <script>
+/* ── Audio context ───────────────────────────────────────── */
 let _ctx = null;
 function audio() {
   if (!_ctx) _ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -281,7 +282,8 @@ function playBeep() {
 
 function playClapping() {
   const ctx = audio();
-  [[0,1],[0.3,1],[0.58,1],[0.62,0.7],[0.66,0.5]].forEach(([delay,vol]) => {
+  [[0,1],[0.3,1],[0.58,1],[0.62,0.7],[0.66,0.5]].forEach(function(pair) {
+    var delay = pair[0], vol = pair[1];
     const len = Math.floor(ctx.sampleRate * 0.07);
     const buf = ctx.createBuffer(1, len, ctx.sampleRate);
     const d = buf.getChannelData(0);
@@ -293,7 +295,8 @@ function playClapping() {
     src.connect(hp); hp.connect(bp); bp.connect(g); g.connect(ctx.destination);
     src.start(ctx.currentTime + delay);
   });
-  [[523,0.05],[659,0.18],[784,0.31],[1047,0.44]].forEach(([f,t]) => {
+  [[523,0.05],[659,0.18],[784,0.31],[1047,0.44]].forEach(function(pair) {
+    var f = pair[0], t = pair[1];
     const o = ctx.createOscillator(), g = ctx.createGain();
     o.type = 'triangle'; o.frequency.value = f;
     o.connect(g); g.connect(ctx.destination);
@@ -305,19 +308,9 @@ function playClapping() {
   });
 }
 
-function speak(text) {
-  if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'en-US';
-  u.rate = 0.88;
-  u.pitch = 1.1;
-  window.speechSynthesis.speak(u);
-}
-
 function playCelebration() {
   const ctx = audio();
-  [0,0.27,0.54,0.81,1.08,1.12,1.16].forEach(delay => {
+  [0,0.27,0.54,0.81,1.08,1.12,1.16].forEach(function(delay) {
     const len = Math.floor(ctx.sampleRate*0.08);
     const buf = ctx.createBuffer(1,len,ctx.sampleRate);
     const d = buf.getChannelData(0);
@@ -328,7 +321,8 @@ function playCelebration() {
     src.connect(hp); hp.connect(g); g.connect(ctx.destination);
     src.start(ctx.currentTime+delay);
   });
-  [[523,0.1],[659,0.25],[784,0.4],[1047,0.55],[784,0.7],[1047,0.85],[1319,1.05]].forEach(([f,t]) => {
+  [[523,0.1],[659,0.25],[784,0.4],[1047,0.55],[784,0.7],[1047,0.85],[1319,1.05]].forEach(function(pair) {
+    var f = pair[0], t = pair[1];
     const o = ctx.createOscillator(), g = ctx.createGain();
     o.type='triangle'; o.frequency.value=f;
     o.connect(g); g.connect(ctx.destination);
@@ -339,24 +333,91 @@ function playCelebration() {
   });
 }
 
+/* ── Speech synthesis ────────────────────────────────────── */
+// iOS Safari requires speechSynthesis.speak() to be called during a user gesture.
+// We prime it silently on the first mic/button tap, then subsequent speak() calls work.
+let speechPrimed = false;
+let pendingSpeech = null;
+
+function primeSpeech() {
+  if (speechPrimed || !window.speechSynthesis) return;
+  speechPrimed = true;
+  const u = new SpeechSynthesisUtterance(' ');
+  u.volume = 0; u.rate = 10;
+  window.speechSynthesis.speak(u);
+}
+
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US'; u.rate = 0.9; u.pitch = 1.1;
+  window.speechSynthesis.speak(u);
+}
+
+// When mic is active iOS routes audio away from speaker.
+// Queue speech to fire after mic fully closes (onend).
+function speakWhenReady(text) {
+  if (listening) {
+    pendingSpeech = text;
+  } else {
+    setTimeout(function() { speak(text); }, 80);
+  }
+}
+
+/* ── Game state ──────────────────────────────────────────── */
 const COLORS=['#FF5C5C','#3BA4D5','#F59E0B','#8B5CF6','#10B981','#EC4899','#F97316','#06B6D4','#7C3AED','#22C55E'];
 const WORDS={'zero':0,'oh':0,'one':1,'won':1,'un':1,'wan':1,'two':2,'to':2,'too':2,'tu':2,'three':3,'tree':3,'free':3,'four':4,'for':4,'fore':4,'five':5,'fife':5,'six':6,'seven':7,'eight':8,'ate':8,'nine':9,'nein':9,'ten':10,'tin':10};
 
 let target=0,score=0,colorIdx=0,fbTimer=null,locked=false,listening=false,rec=null;
+let recHandled = false; // prevents double-processing when aborting early
 
+/* ── Speech recognition ──────────────────────────────────── */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
 if (SR) {
   rec = new SR();
   rec.lang = 'en-US';
   rec.continuous = false;
-  rec.interimResults = false;
-  rec.maxAlternatives = 5;
+  rec.interimResults = true;  // get results immediately as user speaks
+  rec.maxAlternatives = 3;
+
   rec.onresult = function(e) {
-    const alts = [];
-    for (let i=0;i<e.results[0].length;i++) alts.push(e.results[0][i].transcript.trim().toLowerCase());
-    handleSpeech(alts);
+    if (recHandled) return;
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) {
+        // Final result — collect all alternatives
+        recHandled = true;
+        const alts = [];
+        for (let j = 0; j < e.results[i].length; j++) {
+          alts.push(e.results[i][j].transcript.trim().toLowerCase());
+        }
+        handleSpeech(alts);
+        return;
+      } else {
+        // Interim result — if a number is already clear, act immediately
+        const t = e.results[i][0].transcript.trim().toLowerCase();
+        if (parseNumber(t) !== null) {
+          recHandled = true;
+          try { rec.abort(); } catch(err) {}
+          handleSpeech([t]);
+          return;
+        }
+      }
+    }
   };
-  rec.onend = function() { setMicState(false); };
+
+  rec.onend = function() {
+    recHandled = false;
+    setMicState(false);
+    // Now the mic is closed — safe to speak on iOS
+    if (pendingSpeech) {
+      const text = pendingSpeech;
+      pendingSpeech = null;
+      setTimeout(function() { speak(text); }, 80);
+    }
+  };
+
   rec.onerror = function(e) {
     setMicState(false);
     if (e.error==='not-allowed'||e.error==='service-not-allowed') {
@@ -374,6 +435,7 @@ if (SR) {
 
 function startListening() {
   if (!rec||listening||locked) return;
+  primeSpeech();  // unlock TTS during this user gesture
   if (window.speechSynthesis) window.speechSynthesis.cancel();
   audio(); playBeep(); hideFeedback();
   try { rec.start(); setMicState(true); } catch(err) {}
@@ -396,6 +458,7 @@ function setMicState(active) {
   }
 }
 
+/* ── Number parsing ──────────────────────────────────────── */
 function parseNumber(text) {
   text = text.toLowerCase().replace(/[^a-z0-9\s]/g,'').trim();
   const asInt = parseInt(text,10);
@@ -417,6 +480,7 @@ function handleSpeech(alts) {
   showFeedback('err','I heard '+heard+' — try again! 🎤');
 }
 
+/* ── Game logic ──────────────────────────────────────────── */
 function buildStars() {
   const el=document.getElementById('stars');
   el.setAttribute('aria-label','Score: '+score+' out of 10 stars');
@@ -432,6 +496,7 @@ function buildStars() {
 
 function nextRound() {
   if (window.speechSynthesis) window.speechSynthesis.cancel();
+  pendingSpeech = null;
   locked=false;
   target=Math.floor(Math.random()*10)+1;
   const card=document.getElementById('card');
@@ -457,7 +522,7 @@ function guess(n,heardText) {
       setTimeout(function(){ document.getElementById('cel').classList.add('on'); playCelebration(); spawnConfetti(70); },700);
     } else { setTimeout(nextRound,1100); }
   } else {
-    speak("That's not right. This number is "+target+". Say it again!");
+    speakWhenReady("That's not right. This number is "+target+". Say it again!");
     showFeedback('err',"That's not right — this number is "+target+"! Say it again! 🎤");
     const card=document.getElementById('card');
     card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake');
@@ -497,17 +562,26 @@ function spawnConfetti(n) {
 
 function restart() {
   score=0; colorIdx=0; locked=false;
+  pendingSpeech=null;
   document.getElementById('cel').classList.remove('on');
   buildStars(); nextRound();
 }
 
-document.getElementById('mic-btn').addEventListener('click',startListening);
-document.querySelector('.grid').addEventListener('click',function(e){
-  const btn=e.target.closest('[data-n]');
-  if (btn) { audio(); guess(parseInt(btn.dataset.n,10),null); }
+/* ── Events ──────────────────────────────────────────────── */
+document.getElementById('mic-btn').addEventListener('click', startListening);
+
+document.querySelector('.grid').addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-n]');
+  if (btn) {
+    primeSpeech(); // unlock TTS during this user gesture
+    audio();
+    guess(parseInt(btn.dataset.n, 10), null);
+  }
 });
-document.getElementById('again').addEventListener('click',restart);
-document.addEventListener('keydown',function(e){
+
+document.getElementById('again').addEventListener('click', restart);
+
+document.addEventListener('keydown', function(e) {
   if (document.getElementById('cel').classList.contains('on')) return;
   if (e.key>='1'&&e.key<='9') guess(parseInt(e.key,10),null);
   else if (e.key==='0') guess(10,null);
