@@ -459,20 +459,19 @@ function nextRound() {
 
 function guess(n,heardText) {
   if (locked) return;
-  const prefix=heardText?'I heard "'+heardText+'" — ':'';
   if (n===target) {
     locked=true; score++; buildStars(); playClapping();
     const stars=document.querySelectorAll('#stars .star');
     const earned=stars[score-1];
     if (earned) { earned.classList.add('pop'); setTimeout(function(){earned.classList.remove('pop');},420); }
-    showFeedback('ok',prefix+'🎉 Yes! That\'s right!');
+    showFeedback('ok','🎉 Yes! That\'s right!');
     spawnConfetti(12);
     if (score>=10) {
       setTimeout(function(){ document.getElementById('cel').classList.add('on'); playCelebration(); spawnConfetti(70); },700);
     } else { setTimeout(nextRound,1100); }
   } else {
     playGrr();
-    showFeedback('err',prefix+'Grrrr! 😤 Try again!');
+    showFeedback('err',"That's not right — this number is "+target+"! Say it again! 🎤");
     const card=document.getElementById('card');
     card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake');
     setTimeout(function(){card.classList.remove('shake');},400);
