@@ -305,29 +305,14 @@ function playClapping() {
   });
 }
 
-function playGrr() {
-  const ctx = audio();
-  const o = ctx.createOscillator();
-  const lfo = ctx.createOscillator();
-  const lfoG = ctx.createGain();
-  const g = ctx.createGain();
-  const dist = ctx.createWaveShaper();
-  const curve = new Float32Array(256);
-  for (let i = 0; i < 256; i++) {
-    const x = (i*2)/256-1;
-    curve[i] = (Math.PI+80)*x/(Math.PI+80*Math.abs(x));
-  }
-  dist.curve = curve;
-  o.type = 'sawtooth';
-  o.frequency.setValueAtTime(110, ctx.currentTime);
-  o.frequency.linearRampToValueAtTime(75, ctx.currentTime+0.65);
-  lfo.type = 'sine'; lfo.frequency.value = 9; lfoG.gain.value = 22;
-  lfo.connect(lfoG); lfoG.connect(o.frequency);
-  o.connect(dist); dist.connect(g); g.connect(ctx.destination);
-  const t = ctx.currentTime;
-  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.5,t+0.07);
-  g.gain.setValueAtTime(0.5,t+0.55); g.gain.linearRampToValueAtTime(0,t+0.8);
-  o.start(t); lfo.start(t); o.stop(t+0.85); lfo.stop(t+0.85);
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US';
+  u.rate = 0.88;
+  u.pitch = 1.1;
+  window.speechSynthesis.speak(u);
 }
 
 function playCelebration() {
@@ -389,6 +374,7 @@ if (SR) {
 
 function startListening() {
   if (!rec||listening||locked) return;
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
   audio(); playBeep(); hideFeedback();
   try { rec.start(); setMicState(true); } catch(err) {}
 }
@@ -445,6 +431,7 @@ function buildStars() {
 }
 
 function nextRound() {
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
   locked=false;
   target=Math.floor(Math.random()*10)+1;
   const card=document.getElementById('card');
@@ -470,7 +457,7 @@ function guess(n,heardText) {
       setTimeout(function(){ document.getElementById('cel').classList.add('on'); playCelebration(); spawnConfetti(70); },700);
     } else { setTimeout(nextRound,1100); }
   } else {
-    playGrr();
+    speak("That's not right. This number is "+target+". Say it again!");
     showFeedback('err',"That's not right — this number is "+target+"! Say it again! 🎤");
     const card=document.getElementById('card');
     card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake');
