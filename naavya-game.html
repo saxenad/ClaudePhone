@@ -69,6 +69,35 @@
     }
     .star.pop { animation: star-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 
+    /* Range selector */
+    .range-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .range-sel {
+      appearance: none;
+      -webkit-appearance: none;
+      background: var(--key-bg);
+      border: 2px solid var(--divider);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1.05rem;
+      font-weight: 800;
+      padding: 5px 10px;
+      cursor: pointer;
+      text-align: center;
+      min-width: 52px;
+      box-shadow: 0 3px 0 var(--key-shadow);
+    }
+    .range-sel:focus-visible { outline: 3px solid #EF4444; outline-offset: 2px; }
+
     .card {
       width: 186px; height: 186px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
@@ -148,7 +177,7 @@
       content: ''; flex: 1; height: 1px; background: var(--divider);
     }
 
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+    .grid { display: grid; gap: 8px; width: 100%; }
     .btn {
       appearance: none; -webkit-appearance: none; border: none;
       background: var(--key-bg); border-radius: 14px; height: 56px;
@@ -158,7 +187,6 @@
       user-select: none; -webkit-tap-highlight-color: transparent;
       transition: background-color 0.1s; padding: 0;
     }
-    .btn.ten { grid-column: span 3; height: 50px; font-size: 1.5rem; }
     .btn:hover  { background: var(--key-hover); }
     .btn:active { box-shadow: 0 2px 0 var(--key-shadow); transform: translateY(3px); }
     .btn:focus-visible { outline: 3px solid #EF4444; outline-offset: 2px; }
@@ -225,6 +253,13 @@
   <h1>Naavya's <span>Number</span> Game</h1>
   <div class="stars" id="stars" role="status" aria-label="Score: 0 out of 10 stars"></div>
 
+  <div class="range-row" aria-label="Practice range">
+    <span>Numbers</span>
+    <select id="sel-min" class="range-sel" aria-label="Minimum number"></select>
+    <span>&#x2013;</span>
+    <select id="sel-max" class="range-sel" aria-label="Maximum number"></select>
+  </div>
+
   <div class="card" id="card">
     <div class="num" id="numDisplay"></div>
   </div>
@@ -243,18 +278,7 @@
   </div>
 
   <div class="or-tap" id="or-tap-label">or tap a number</div>
-  <div class="grid" role="group" aria-label="Number buttons">
-    <button class="btn" data-n="1">1</button>
-    <button class="btn" data-n="2">2</button>
-    <button class="btn" data-n="3">3</button>
-    <button class="btn" data-n="4">4</button>
-    <button class="btn" data-n="5">5</button>
-    <button class="btn" data-n="6">6</button>
-    <button class="btn" data-n="7">7</button>
-    <button class="btn" data-n="8">8</button>
-    <button class="btn" data-n="9">9</button>
-    <button class="btn ten" data-n="10">10</button>
-  </div>
+  <div class="grid" role="group" aria-label="Number buttons"></div>
 
   <div class="fb" id="fb" role="status" aria-live="polite"></div>
 </div>
@@ -357,7 +381,6 @@ function speakWhenReady(text) {
   if (listening) {
     pendingSpeech = text;
   } else {
-    // 500ms gives iOS time for the TTS primer to complete before we cancel+speak
     setTimeout(function() { speak(text); }, 500);
   }
 }
@@ -366,8 +389,71 @@ function speakWhenReady(text) {
 const COLORS=['#FF5C5C','#3BA4D5','#F59E0B','#8B5CF6','#10B981','#EC4899','#F97316','#06B6D4','#7C3AED','#22C55E'];
 const WORDS={'zero':0,'oh':0,'one':1,'won':1,'un':1,'wan':1,'two':2,'to':2,'too':2,'tu':2,'three':3,'tree':3,'free':3,'four':4,'for':4,'fore':4,'five':5,'fife':5,'six':6,'seven':7,'eight':8,'ate':8,'nine':9,'nein':9,'ten':10,'tin':10};
 
-let target=0,score=0,colorIdx=0,fbTimer=null,locked=false,listening=false,rec=null;
+let target=0, score=0, colorIdx=0, fbTimer=null, locked=false, listening=false, rec=null;
 let recHandled = false;
+let minNum = 1, maxNum = 10;
+
+/* ── Range selector ──────────────────────────────────────── */
+function buildSelects() {
+  var minSel = document.getElementById('sel-min');
+  var maxSel = document.getElementById('sel-max');
+  for (var i = 1; i <= 10; i++) {
+    var o1 = document.createElement('option');
+    o1.value = i; o1.textContent = i;
+    if (i === minNum) o1.selected = true;
+    minSel.appendChild(o1);
+    var o2 = document.createElement('option');
+    o2.value = i; o2.textContent = i;
+    if (i === maxNum) o2.selected = true;
+    maxSel.appendChild(o2);
+  }
+}
+
+function buildGrid() {
+  var grid = document.querySelector('.grid');
+  grid.innerHTML = '';
+  var count = maxNum - minNum + 1;
+  var cols = count <= 2 ? count : 3;
+  grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+  for (var n = minNum; n <= maxNum; n++) {
+    var btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.dataset.n = n;
+    btn.textContent = n;
+    // Last button alone in a row of 3 — span the full row
+    if (cols >= 3 && count % 3 === 1 && n === maxNum) {
+      btn.style.gridColumn = 'span 3';
+      btn.style.height = '50px';
+    }
+    grid.appendChild(btn);
+  }
+}
+
+function applyRange() {
+  minNum = parseInt(document.getElementById('sel-min').value, 10);
+  maxNum = parseInt(document.getElementById('sel-max').value, 10);
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  pendingSpeech = null;
+  score = 0; colorIdx = 0; locked = false;
+  document.getElementById('cel').classList.remove('on');
+  buildGrid();
+  buildStars();
+  nextRound();
+}
+
+document.getElementById('sel-min').addEventListener('change', function() {
+  var v = parseInt(this.value, 10);
+  var maxSel = document.getElementById('sel-max');
+  if (parseInt(maxSel.value, 10) < v) maxSel.value = v;
+  applyRange();
+});
+
+document.getElementById('sel-max').addEventListener('change', function() {
+  var v = parseInt(this.value, 10);
+  var minSel = document.getElementById('sel-min');
+  if (parseInt(minSel.value, 10) > v) minSel.value = v;
+  applyRange();
+});
 
 /* ── Speech recognition ──────────────────────────────────── */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -408,7 +494,6 @@ if (SR) {
     if (pendingSpeech) {
       const text = pendingSpeech;
       pendingSpeech = null;
-      // 500ms lets iOS fully release the mic audio session before TTS plays
       setTimeout(function() { speak(text); }, 500);
     }
   };
@@ -430,7 +515,6 @@ if (SR) {
 
 function startListening() {
   if (!rec||listening||locked) return;
-  // cancel() BEFORE primeSpeech() — otherwise cancel() immediately kills the unlock utterance
   if (window.speechSynthesis) window.speechSynthesis.cancel();
   primeSpeech();
   audio(); playBeep(); hideFeedback();
@@ -494,7 +578,7 @@ function nextRound() {
   if (window.speechSynthesis) window.speechSynthesis.cancel();
   pendingSpeech = null;
   locked=false;
-  target=Math.floor(Math.random()*10)+1;
+  target = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
   const card=document.getElementById('card');
   card.style.backgroundColor=COLORS[colorIdx%COLORS.length];
   colorIdx++;
@@ -584,6 +668,9 @@ document.addEventListener('keydown', function(e) {
   else if (e.key===' '||e.key==='Enter') startListening();
 });
 
+/* ── Init ────────────────────────────────────────────────── */
+buildSelects();
+buildGrid();
 buildStars();
 nextRound();
 </script>
